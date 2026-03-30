@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.extension.github;
+package com.epam.reportportal.extension.github.model;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
@@ -28,26 +28,30 @@ import lombok.Setter;
 /**
  * Represents response from GET /user GitHub API.
  */
-@Setter
-class UserResource implements Serializable {
+public class UserResource implements Serializable {
 
   @Getter
+  @Setter
   @JsonProperty("login")
   private String login;
 
   @Getter
+  @Setter
   @JsonProperty("email")
   private String email;
 
   @Getter
+  @Setter
   @JsonProperty("name")
   private String name;
 
   @Getter
+  @Setter
   @JsonProperty("avatar_url")
   private String avatarUrl;
 
   @Getter
+  @Setter
   @JsonProperty("organizations_url")
   private String organizationsUrl;
 
@@ -59,8 +63,7 @@ class UserResource implements Serializable {
   }
 
   @JsonAnySetter
-  public void setUnknown(String name, Object value) {
+  public void set(String name, Object value) {
     details.put(name, value);
   }
-
 }

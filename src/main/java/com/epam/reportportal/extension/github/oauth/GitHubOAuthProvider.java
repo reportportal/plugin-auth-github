@@ -14,16 +14,23 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.extension.github;
+package com.epam.reportportal.extension.github.oauth;
 
 import com.epam.reportportal.auth.model.settings.OAuthRegistrationResource;
 import com.epam.reportportal.auth.oauth.OAuthProvider;
+import com.epam.reportportal.extension.github.GitHubUserReplicator;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 
 /**
  * GitHub OAuth2 provider — plugin-managed, not a Spring component.
  */
-public class GithubOauthProvider extends OAuthProvider {
+@Slf4j
+public class GitHubOAuthProvider extends OAuthProvider {
+
+  public static final String PROVIDER_NAME = "github";
 
   public static final String BUTTON_HTML = """
       <svg aria-hidden="true" height="28" version="1.1" viewBox="0 0 16 16" width="28">
@@ -32,17 +39,17 @@ public class GithubOauthProvider extends OAuthProvider {
       </svg>
       <span>Login with GitHub</span>""";
 
-  public static final String PROVIDER_NAME = "github";
-
   private final GitHubUserReplicator gitHubUserReplicator;
 
-  public GithubOauthProvider(GitHubUserReplicator gitHubUserReplicator) {
+  public GitHubOAuthProvider(GitHubUserReplicator gitHubUserReplicator) {
     super(PROVIDER_NAME, BUTTON_HTML, true);
     this.gitHubUserReplicator = gitHubUserReplicator;
   }
 
   @Override
-  public OAuth2UserService getUserService(OAuthRegistrationResource registrationResource) {
+  public OAuth2UserService<OAuth2UserRequest, OAuth2User> getUserService(
+      OAuthRegistrationResource registrationResource) {
+    log.info("getUserService");
     return new GitHubOAuth2UserService(gitHubUserReplicator, () -> registrationResource);
   }
 }

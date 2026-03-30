@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.extension.github;
+package com.epam.reportportal.extension.github.client;
 
-import java.io.IOException;
+import com.epam.reportportal.extension.github.model.EmailResource;
+import com.epam.reportportal.extension.github.model.OrganizationResource;
+import com.epam.reportportal.extension.github.model.UserResource;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +34,7 @@ import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * Simple GitHub client.
+ * Simple GitHub API client.
  */
 public class GitHubClient {
 
@@ -48,7 +50,7 @@ public class GitHubClient {
       @Override
       public void handleError(ClientHttpResponse response) {
         String errorMessage =
-            "Unable to load Github Data:" + new String(getResponseBody(response), StandardCharsets.UTF_8);
+            "Unable to load GitHub data: " + new String(getResponseBody(response), StandardCharsets.UTF_8);
         LOGGER.error(errorMessage);
         throw new AuthenticationServiceException(errorMessage);
       }
@@ -60,40 +62,40 @@ public class GitHubClient {
   }
 
   public static GitHubClient withAccessToken(String accessToken) {
+    LOGGER.info("withAccessToken");
     return new GitHubClient(accessToken);
   }
 
   public UserResource getUser() {
+    LOGGER.info("getUser");
     return this.restTemplate.getForObject(GITHUB_BASE_URL + "/user", UserResource.class);
   }
 
   public Map<String, Object> getUserAttributes() {
+    LOGGER.info("getUserAttributes");
     return getForObject(GITHUB_BASE_URL + "/user", new ParameterizedTypeReference<>() {
     });
   }
 
   public List<EmailResource> getUserEmails() {
+    LOGGER.info("getUserEmails");
     return getForObject(GITHUB_BASE_URL + "/user/emails", new ParameterizedTypeReference<>() {
     });
   }
 
-  public List<OrganizationResource> getUserOrganizations(String user) {
-    return getForObject(GITHUB_BASE_URL + "/user/orgs",
-        new ParameterizedTypeReference<>() {
-        },
-        user);
-  }
-
   public List<OrganizationResource> getUserOrganizations(UserResource user) {
+    LOGGER.info("getUserOrganizations: login={}", user.getLogin());
     return getForObject(user.getOrganizationsUrl(), new ParameterizedTypeReference<>() {
     });
   }
 
   public ResponseEntity<Resource> downloadResource(String url) {
+    LOGGER.info("downloadResource: url={}", url);
     return this.restTemplate.getForEntity(url, Resource.class);
   }
 
   private <T> T getForObject(String url, ParameterizedTypeReference<T> type, Object... urlVars) {
+    LOGGER.info("getForObject: url={}", url);
     return this.restTemplate.exchange(url, HttpMethod.GET, null, type, urlVars).getBody();
   }
 }

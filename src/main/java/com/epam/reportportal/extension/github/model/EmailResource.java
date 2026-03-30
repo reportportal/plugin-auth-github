@@ -14,14 +14,17 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.extension.github;
+package com.epam.reportportal.extension.github.model;
 
-import org.pf4j.Plugin;
-import org.pf4j.PluginWrapper;
+import lombok.Data;
 
-public class GithubPlugin extends Plugin {
+/**
+ * Represents response from GET /user/emails GitHub API.
+ */
+@Data
+public class EmailResource {
 
-  public GithubPlugin(PluginWrapper wrapper) {
-    super(wrapper);
-  }
+  private String email;
+  private boolean verified;
+  private boolean primary;
 }

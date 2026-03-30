@@ -14,15 +14,20 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.extension.github;
+package com.epam.reportportal.extension.github.oauth;
 
-import static com.epam.reportportal.extension.github.GithubOauthProvider.PROVIDER_NAME;
+import static com.epam.reportportal.extension.github.oauth.GitHubOAuthProvider.PROVIDER_NAME;
 
-import com.epam.reportportal.auth.integration.github.RPOAuth2User;
 import com.epam.reportportal.auth.model.settings.OAuthRegistrationResource;
+import com.epam.reportportal.auth.oauth.RPOAuth2User;
 import com.epam.reportportal.base.infrastructure.persistence.commons.ReportPortalUser;
+import com.epam.reportportal.extension.github.GitHubUserReplicator;
+import com.epam.reportportal.extension.github.client.GitHubClient;
+import com.epam.reportportal.extension.github.model.OrganizationResource;
+import com.epam.reportportal.extension.github.model.UserResource;
 import com.google.common.base.Splitter;
 import java.util.Collections;
+import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -34,6 +39,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 /**
  * OAuth2 user service for GitHub login. Loads the GitHub user and replicates them into ReportPortal.
  */
+@Slf4j
 public class GitHubOAuth2UserService implements OAuth2UserService<OAuth2UserRequest, OAuth2User> {
 
   private final GitHubUserReplicator replicator;
@@ -47,6 +53,7 @@ public class GitHubOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
   @Override
   public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+    log.info("loadUser: registrationId={}", userRequest.getClientRegistration().getRegistrationId());
     if (!userRequest.getClientRegistration().getRegistrationId().equals(PROVIDER_NAME)) {
       return null;
     }
@@ -55,35 +62,34 @@ public class GitHubOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
     GitHubClient gitHubClient = GitHubClient.withAccessToken(accessToken);
     UserResource gitHubUser = gitHubClient.getUser();
 
-    OAuthRegistrationResource registration = oAuthRegistrationSupplier.get();
-    List<String> allowedOrgs = parseAllowedOrganizations(registration);
+    List<String> allowedOrgs = parseAllowedOrganizations(oAuthRegistrationSupplier.get());
     if (!allowedOrgs.isEmpty()) {
-      validateUserOrganizations(gitHubUser.getLogin(), gitHubClient, allowedOrgs);
+      validateUserOrganizations(gitHubUser, gitHubClient, allowedOrgs);
     }
 
     ReportPortalUser user = replicator.replicateUser(gitHubUser, gitHubClient);
-
     return new RPOAuth2User(user, accessToken);
   }
 
   private List<String> parseAllowedOrganizations(OAuthRegistrationResource registration) {
+    log.info("parseAllowedOrganizations");
     return Optional.ofNullable(registration.getRestrictions())
         .map(restrictions -> restrictions.get("organizations"))
         .map(orgs -> Splitter.on(',').omitEmptyStrings().splitToList(orgs))
         .orElse(Collections.emptyList());
   }
 
-  private void validateUserOrganizations(String username,
-      GitHubClient client,
+  private void validateUserOrganizations(UserResource user, GitHubClient client,
       List<String> allowedOrgs) {
-    boolean hasAccess = client.getUserOrganizations(username)
+    log.info("validateUserOrganizations: login={}", user.getLogin());
+    boolean hasAccess = client.getUserOrganizations(user)
         .stream()
         .map(OrganizationResource::getLogin)
         .anyMatch(allowedOrgs::contains);
 
     if (!hasAccess) {
       throw new OAuth2AuthenticationException(
-          "User '" + username + "' does not belong to allowed GitHub organization"
+          "User '" + user.getLogin() + "' does not belong to allowed GitHub organization"
       );
     }
   }

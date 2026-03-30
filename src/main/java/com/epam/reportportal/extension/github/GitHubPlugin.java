@@ -16,16 +16,12 @@
 
 package com.epam.reportportal.extension.github;
 
-import lombok.Data;
+import org.pf4j.Plugin;
+import org.pf4j.PluginWrapper;
 
-/**
- * Represents response from GET /user/emails GitHub API.
- */
-@Data
-class EmailResource {
+public class GitHubPlugin extends Plugin {
 
-  public String email;
-  public boolean verified;
-  public boolean primary;
-
+  public GitHubPlugin(PluginWrapper wrapper) {
+    super(wrapper);
+  }
 }

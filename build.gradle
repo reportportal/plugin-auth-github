@@ -10,6 +10,12 @@ plugins {
 
 apply from: 'project-properties.gradle'
 
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:3.5.10"
+    }
+}
+
 repositories {
     mavenCentral()
     maven { url = "https://build.shibboleth.net/nexus/content/repositories/releases/" }
@@ -28,8 +34,8 @@ dependencies {
             exclude group: 'org.springframework.modulith', module: 'spring-modulith-apt'
         }
     } else {
-        implementation 'com.github.reportportal:service-api:a83af73'
-        annotationProcessor('com.github.reportportal:service-api:a83af73') {
+        implementation 'com.github.reportportal:service-api:123a7af'
+        annotationProcessor('com.github.reportportal:service-api:123a7af') {
             exclude group: 'org.springframework.modulith', module: 'spring-modulith-apt'
         }
     }
@@ -88,7 +94,6 @@ jar {
                     "Plugin-Description": "${project.description}",
                     "Plugin-Documentation": "${documentation}",
                     "Plugin-Metadata-isIntegrationsAllowed": "${isIntegrationsAllowed}",
-                    "Plugin-Metadata-isMultiple": "${isMultiple}",
                     "Plugin-Binary-Data-main": "${mainBinaryData}"
             )
         }
@@ -115,8 +120,6 @@ tasks.register('plugin', Jar) {
     }
     archiveExtension.set('zip')
 }
-
-version = "${findProperty('baseVersion')}-${UUID.randomUUID().toString().replace('-', '').substring(0, 8)}"
 
 tasks.register('assemblePlugin', Copy) {
     from plugin

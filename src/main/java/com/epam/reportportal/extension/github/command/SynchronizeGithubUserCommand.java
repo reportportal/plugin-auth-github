@@ -23,12 +23,14 @@ import com.epam.reportportal.base.reporting.OperationCompletionRS;
 import com.epam.reportportal.extension.github.GitHubUserReplicator;
 import com.epam.reportportal.extension.role.AuthenticatedUserContextCommand;
 import java.util.Objects;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Command to synchronize GitHub user information.
  *
  * @author <a href="mailto:andrei_varabyeu@epam.com">Andrei Varabyeu</a>
  */
+@Slf4j
 public class SynchronizeGithubUserCommand extends AuthenticatedUserContextCommand {
 
   private static final String COMMAND_NAME = "synchronize";
@@ -47,6 +49,7 @@ public class SynchronizeGithubUserCommand extends AuthenticatedUserContextComman
 
   @Override
   public String getName() {
+    log.info("getName");
     return COMMAND_NAME;
   }
 
@@ -60,6 +63,7 @@ public class SynchronizeGithubUserCommand extends AuthenticatedUserContextComman
    */
   @Override
   protected OperationCompletionRS invokeCommand(PluginCommandRQ pluginCommandRq) {
+    log.info("invokeCommand");
     String accessToken = (String) pluginCommandRq.getArguments().get(ACCESS_TOKEN_PARAM);
     BusinessRule.expect(accessToken, Objects::nonNull)
         .verify(ErrorType.INCORRECT_AUTHENTICATION_TYPE, "Cannot synchronize GitHub User: access_token is missing");

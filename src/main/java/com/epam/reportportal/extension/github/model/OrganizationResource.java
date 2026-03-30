@@ -14,21 +14,34 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.extension.github;
+package com.epam.reportportal.extension.github.model;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * GitHub API: Organization resource representation.
  */
 public class OrganizationResource {
 
+  @Getter
+  @Setter
   private String login;
+
+  @Getter
+  @Setter
   private Long id;
+
+  @Getter
+  @Setter
   private String url;
+
+  @Getter
+  @Setter
   private String description;
 
   private Map<String, Object> details = new HashMap<>();
@@ -39,43 +52,7 @@ public class OrganizationResource {
   }
 
   @JsonAnySetter
-  public void setUnknown(String name, Object value) {
+  public void set(String name, Object value) {
     details.put(name, value);
-  }
-
-  public String getLogin() {
-    return login;
-  }
-
-  public Long getId() {
-    return id;
-  }
-
-  public String getUrl() {
-    return url;
-  }
-
-  public String getDescription() {
-    return description;
-  }
-
-  public void setLogin(String login) {
-    this.login = login;
-  }
-
-  public void setId(Long id) {
-    this.id = id;
-  }
-
-  public void setUrl(String url) {
-    this.url = url;
-  }
-
-  public void setDescription(String description) {
-    this.description = description;
-  }
-
-  public void setDetails(Map<String, Object> details) {
-    this.details = details;
   }
 }

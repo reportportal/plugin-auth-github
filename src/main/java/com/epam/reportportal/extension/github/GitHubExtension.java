@@ -17,7 +17,7 @@
 package com.epam.reportportal.extension.github;
 
 import static com.epam.reportportal.auth.integration.converter.OAuthRegistrationConverters.FROM_SPRING_MERGE;
-import static com.epam.reportportal.extension.github.GithubOauthProvider.PROVIDER_NAME;
+import static com.epam.reportportal.extension.github.oauth.GitHubOAuthProvider.PROVIDER_NAME;
 
 import com.epam.reportportal.auth.event.UserEventPublisher;
 import com.epam.reportportal.auth.model.settings.OAuthRegistrationResource;
@@ -33,12 +33,12 @@ import com.epam.reportportal.extension.CommonPluginCommand;
 import com.epam.reportportal.extension.IntegrationGroupEnum;
 import com.epam.reportportal.extension.PluginCommand;
 import com.epam.reportportal.extension.github.command.SynchronizeGithubUserCommand;
+import com.epam.reportportal.extension.github.oauth.GitHubOAuthProvider;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.pf4j.Extension;
@@ -46,7 +46,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 
 /**
@@ -54,13 +53,25 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
  */
 @Extension
 @Slf4j
-public class GithubExtension implements AuthExtension {
+public class GitHubExtension implements AuthExtension {
 
   private static final String CALL_BACK_URL = "{baseUrl}/sso/login/{registrationId}";
   private static final String PLUGIN_NAME = "GitHub OAuth Plugin";
   private static final String DOCUMENTATION_LINK = "https://reportportal.io/docs/plugins/authorization/GitHubAuthorization";
   private static final String DOCUMENTATION_LINK_FIELD = "documentationLink";
   private static final String NAME_FIELD = "name";
+
+  private static final AuthenticationProvider NO_OP_AUTH_PROVIDER = new AuthenticationProvider() {
+    @Override
+    public Authentication authenticate(Authentication authentication) {
+      return null;
+    }
+
+    @Override
+    public boolean supports(Class<?> authentication) {
+      return false;
+    }
+  };
 
   @Autowired
   private UserRepository userRepository;
@@ -80,51 +91,44 @@ public class GithubExtension implements AuthExtension {
   @Autowired
   private UserEventPublisher userEventPublisher;
 
-  private Supplier<GitHubUserReplicator> replicatorSupplier;
-  private Supplier<GithubOauthProvider> oauthProviderSupplier;
-  private Supplier<Map<String, CommonPluginCommand<?>>> commonCommandMapping;
+  private GitHubUserReplicator replicator;
+  private GitHubOAuthProvider oauthProvider;
+  private Map<String, CommonPluginCommand<?>> commonCommands;
 
   @Autowired
-  public GithubExtension(Map<String, Object> initParams) {
+  public GitHubExtension(Map<String, Object> initParams) {
     // initParams provided by PF4J at extension construction time
   }
 
   @PostConstruct
   public void init() {
+    log.info("init");
     log.debug("Initializing GitHub OAuth extension");
-    this.replicatorSupplier = () -> new GitHubUserReplicator(
+    replicator = new GitHubUserReplicator(
         userRepository, projectRepository, personalProjectService,
         userBinaryDataService, contentTypeResolver, userEventPublisher
     );
-    this.oauthProviderSupplier = () -> new GithubOauthProvider(replicatorSupplier.get());
-    SynchronizeGithubUserCommand syncCommand = new SynchronizeGithubUserCommand(replicatorSupplier.get());
-    this.commonCommandMapping = () -> Map.of(syncCommand.getName(), syncCommand);
+    oauthProvider = new GitHubOAuthProvider(replicator);
+    SynchronizeGithubUserCommand syncCommand = new SynchronizeGithubUserCommand(replicator);
+    commonCommands = Map.of(syncCommand.getName(), syncCommand);
   }
 
   @Override
   public AuthenticationProvider getAuthenticationProvider() {
-    // GitHub OAuth is handled by Spring's OAuth2 login flow, not a traditional AuthenticationProvider
-    return new AuthenticationProvider() {
-      @Override
-      public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        return null;
-      }
-
-      @Override
-      public boolean supports(Class<?> authentication) {
-        return false;
-      }
-    };
+    log.info("getAuthenticationProvider");
+    return NO_OP_AUTH_PROVIDER;
   }
 
   @Override
   public Optional<OAuthProvider> getOAuthProvider() {
-    return Optional.of(oauthProviderSupplier.get());
+    log.info("getOAuthProvider");
+    return Optional.of(oauthProvider);
   }
 
   @Override
   public Optional<OAuthRegistration> fillOAuthRegistration(String oauthProviderId,
       OAuthRegistrationResource registrationResource, String pathValue) {
+    log.info("fillOAuthRegistration: oauthProviderId={}", oauthProviderId);
     if (!PROVIDER_NAME.equals(oauthProviderId)) {
       return Optional.empty();
     }
@@ -139,21 +143,17 @@ public class GithubExtension implements AuthExtension {
   }
 
   @Override
-  public void synchronizeUser(String accessToken) {
-    log.debug("Synchronizing GitHub user");
-    replicatorSupplier.get().synchronizeUser(accessToken);
-  }
-
-  @Override
   public Optional<Map<String, Object>> getAuthProviderInfo() {
+    log.info("getAuthProviderInfo");
     return Optional.of(Map.of(
-        "button", GithubOauthProvider.BUTTON_HTML,
+        "button", GitHubOAuthProvider.BUTTON_HTML,
         "path", "/oauth/login/" + PROVIDER_NAME
     ));
   }
 
   @Override
   public Map<String, ?> getPluginParams() {
+    log.info("getPluginParams");
     Map<String, Object> params = new HashMap<>();
     params.put(NAME_FIELD, PLUGIN_NAME);
     params.put(DOCUMENTATION_LINK_FIELD, DOCUMENTATION_LINK);
@@ -164,22 +164,25 @@ public class GithubExtension implements AuthExtension {
 
   @Override
   public CommonPluginCommand<?> getCommonCommand(String commandName) {
-    return commonCommandMapping.get().get(commandName);
+    log.info("getCommonCommand: commandName={}", commandName);
+    return commonCommands.get(commandName);
   }
 
   @Override
   public PluginCommand<?> getIntegrationCommand(String commandName) {
+    log.info("getIntegrationCommand: commandName={}", commandName);
     return null;
   }
 
   @Override
   public IntegrationGroupEnum getIntegrationGroup() {
+    log.info("getIntegrationGroup");
     return IntegrationGroupEnum.AUTH;
   }
 
   private static String getCallBackUrl(String pathValue) {
-    return StringUtils.isEmpty(pathValue) || pathValue.equals("/")
-        ? CALL_BACK_URL.replaceFirst("baseUrl\\}/", "baseUrl}/api/")
-        : CALL_BACK_URL;
+    return StringUtils.isEmpty(pathValue) || pathValue.equals("/") ?
+        CALL_BACK_URL.replaceFirst("baseUrl}/", "baseUrl}/api/") :
+        CALL_BACK_URL;
   }
 }
