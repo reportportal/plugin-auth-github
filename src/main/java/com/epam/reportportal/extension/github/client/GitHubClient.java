@@ -23,8 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpMethod;
@@ -39,7 +37,6 @@ import org.springframework.web.client.RestTemplate;
  */
 @Slf4j
 public class GitHubClient {
-
 
   private static final String GITHUB_BASE_URL = "https://api.github.com";
 
