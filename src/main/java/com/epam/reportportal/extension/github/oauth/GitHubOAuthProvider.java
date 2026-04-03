@@ -16,9 +16,10 @@
 
 package com.epam.reportportal.extension.github.oauth;
 
-import com.epam.reportportal.auth.model.settings.OAuthRegistrationResource;
+import com.epam.reportportal.auth.model.OAuthRegistrationResource;
 import com.epam.reportportal.auth.oauth.OAuthProvider;
 import com.epam.reportportal.extension.github.GitHubUserReplicator;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
@@ -47,9 +48,7 @@ public class GitHubOAuthProvider extends OAuthProvider {
   }
 
   @Override
-  public OAuth2UserService<OAuth2UserRequest, OAuth2User> getUserService(
-      OAuthRegistrationResource registrationResource) {
-    log.info("getUserService");
+  public OAuth2UserService<OAuth2UserRequest, OAuth2User> getUserService(OAuthRegistrationResource registrationResource) {
     return new GitHubOAuth2UserService(gitHubUserReplicator, () -> registrationResource);
   }
 }

@@ -18,7 +18,7 @@ package com.epam.reportportal.extension.github.oauth;
 
 import static com.epam.reportportal.extension.github.oauth.GitHubOAuthProvider.PROVIDER_NAME;
 
-import com.epam.reportportal.auth.model.settings.OAuthRegistrationResource;
+import com.epam.reportportal.auth.model.OAuthRegistrationResource;
 import com.epam.reportportal.auth.oauth.RPOAuth2User;
 import com.epam.reportportal.base.infrastructure.persistence.commons.ReportPortalUser;
 import com.epam.reportportal.extension.github.GitHubUserReplicator;
@@ -27,10 +27,10 @@ import com.epam.reportportal.extension.github.model.OrganizationResource;
 import com.epam.reportportal.extension.github.model.UserResource;
 import com.google.common.base.Splitter;
 import java.util.Collections;
-import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -62,9 +62,9 @@ public class GitHubOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
     GitHubClient gitHubClient = GitHubClient.withAccessToken(accessToken);
     UserResource gitHubUser = gitHubClient.getUser();
 
-    List<String> allowedOrgs = parseAllowedOrganizations(oAuthRegistrationSupplier.get());
-    if (!allowedOrgs.isEmpty()) {
-      validateUserOrganizations(gitHubUser, gitHubClient, allowedOrgs);
+    List<String> allowedOrganizations = parseAllowedOrganizations(oAuthRegistrationSupplier.get());
+    if (!allowedOrganizations.isEmpty()) {
+      validateUserOrganizations(gitHubUser, gitHubClient, allowedOrganizations);
     }
 
     ReportPortalUser user = replicator.replicateUser(gitHubUser, gitHubClient);
@@ -72,7 +72,6 @@ public class GitHubOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
   }
 
   private List<String> parseAllowedOrganizations(OAuthRegistrationResource registration) {
-    log.info("parseAllowedOrganizations");
     return Optional.ofNullable(registration.getRestrictions())
         .map(restrictions -> restrictions.get("organizations"))
         .map(orgs -> Splitter.on(',').omitEmptyStrings().splitToList(orgs))
@@ -81,7 +80,6 @@ public class GitHubOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
   private void validateUserOrganizations(UserResource user, GitHubClient client,
       List<String> allowedOrgs) {
-    log.info("validateUserOrganizations: login={}", user.getLogin());
     boolean hasAccess = client.getUserOrganizations(user)
         .stream()
         .map(OrganizationResource::getLogin)

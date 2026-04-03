@@ -16,17 +16,19 @@
 
 package com.epam.reportportal.extension.github;
 
-import static com.epam.reportportal.auth.integration.converter.OAuthRegistrationConverters.FROM_SPRING_MERGE;
 import static com.epam.reportportal.extension.github.oauth.GitHubOAuthProvider.PROVIDER_NAME;
+import static org.springframework.web.servlet.support.ServletUriComponentsBuilder.fromCurrentContextPath;
 
 import com.epam.reportportal.auth.event.UserEventPublisher;
-import com.epam.reportportal.auth.model.settings.OAuthRegistrationResource;
+import com.epam.reportportal.auth.integration.handler.impl.strategy.AuthIntegrationStrategy;
+import com.epam.reportportal.auth.integration.validator.duplicate.IntegrationDuplicateValidator;
+import com.epam.reportportal.auth.integration.validator.request.UpdateAuthRequestValidator;
 import com.epam.reportportal.auth.oauth.OAuthProvider;
 import com.epam.reportportal.base.infrastructure.commons.ContentTypeResolver;
 import com.epam.reportportal.base.infrastructure.persistence.binary.UserBinaryDataService;
+import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.UserRepository;
-import com.epam.reportportal.base.infrastructure.persistence.entity.oauth.OAuthRegistration;
 import com.epam.reportportal.base.infrastructure.persistence.util.PersonalProjectService;
 import com.epam.reportportal.extension.AuthExtension;
 import com.epam.reportportal.extension.CommonPluginCommand;
@@ -34,19 +36,21 @@ import com.epam.reportportal.extension.IntegrationGroupEnum;
 import com.epam.reportportal.extension.PluginCommand;
 import com.epam.reportportal.extension.github.command.SynchronizeGithubUserCommand;
 import com.epam.reportportal.extension.github.oauth.GitHubOAuthProvider;
+import com.epam.reportportal.extension.github.service.GitHubIntegrationStrategy;
+import com.epam.reportportal.extension.github.service.GitHubRequiredParamNamesProvider;
+import com.epam.reportportal.extension.github.utils.MemoizingSupplier;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+import org.jasypt.util.text.BasicTextEncryptor;
 import org.pf4j.Extension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
 
 /**
  * GitHub OAuth2 authentication extension. Provides GitHub SSO as a PF4J plugin.
@@ -55,7 +59,9 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 @Slf4j
 public class GitHubExtension implements AuthExtension {
 
-  private static final String CALL_BACK_URL = "{baseUrl}/sso/login/{registrationId}";
+  public static final String SSO_LOGIN_PATH = "/oauth/login";
+  public static final String SCHEMA_SCRIPTS_DIR = "schema";
+
   private static final String PLUGIN_NAME = "GitHub OAuth Plugin";
   private static final String DOCUMENTATION_LINK = "https://reportportal.io/docs/plugins/authorization/GitHubAuthorization";
   private static final String DOCUMENTATION_LINK_FIELD = "documentationLink";
@@ -89,11 +95,23 @@ public class GitHubExtension implements AuthExtension {
   private ContentTypeResolver contentTypeResolver;
 
   @Autowired
+  IntegrationRepository integrationRepository;
+
+  @Autowired
   private UserEventPublisher userEventPublisher;
+
+  @Autowired
+  private IntegrationDuplicateValidator integrationDuplicateValidator;
+
+  @Autowired
+  private BasicTextEncryptor encryptor;
 
   private GitHubUserReplicator replicator;
   private GitHubOAuthProvider oauthProvider;
   private Map<String, CommonPluginCommand<?>> commonCommands;
+
+  private Supplier<GitHubIntegrationStrategy> gitHubIntegrationStrategySupplier;
+
 
   @Autowired
   public GitHubExtension(Map<String, Object> initParams) {
@@ -102,8 +120,12 @@ public class GitHubExtension implements AuthExtension {
 
   @PostConstruct
   public void init() {
-    log.info("init");
-    log.debug("Initializing GitHub OAuth extension");
+    log.info("Initializing GitHub OAuth extension");
+    this.gitHubIntegrationStrategySupplier = new MemoizingSupplier<>(
+        () -> new GitHubIntegrationStrategy(integrationRepository,
+            new UpdateAuthRequestValidator(new GitHubRequiredParamNamesProvider()), integrationDuplicateValidator,
+            encryptor));
+
     replicator = new GitHubUserReplicator(
         userRepository, projectRepository, personalProjectService,
         userBinaryDataService, contentTypeResolver, userEventPublisher
@@ -111,6 +133,9 @@ public class GitHubExtension implements AuthExtension {
     oauthProvider = new GitHubOAuthProvider(replicator);
     SynchronizeGithubUserCommand syncCommand = new SynchronizeGithubUserCommand(replicator);
     commonCommands = Map.of(syncCommand.getName(), syncCommand);
+
+/*    initApplicationListeners();
+    initSchema();*/
   }
 
   @Override
@@ -126,28 +151,17 @@ public class GitHubExtension implements AuthExtension {
   }
 
   @Override
-  public Optional<OAuthRegistration> fillOAuthRegistration(String oauthProviderId,
-      OAuthRegistrationResource registrationResource, String pathValue) {
-    log.info("fillOAuthRegistration: oauthProviderId={}", oauthProviderId);
-    if (!PROVIDER_NAME.equals(oauthProviderId)) {
-      return Optional.empty();
-    }
-    ClientRegistration springRegistration = CommonOAuth2Provider.GITHUB.getBuilder(oauthProviderId)
-        .clientId(registrationResource.getClientId())
-        .clientSecret(registrationResource.getClientSecret())
-        .redirectUri(getCallBackUrl(pathValue))
-        .scope("read:user", "user:email", "read:org")
-        .clientName(oauthProviderId)
-        .build();
-    return Optional.of(FROM_SPRING_MERGE.apply(registrationResource, springRegistration));
+  public Optional<String> getAuthIntegrationType() {
+    return Optional.of("github");
   }
+
 
   @Override
   public Optional<Map<String, Object>> getAuthProviderInfo() {
     log.info("getAuthProviderInfo");
     return Optional.of(Map.of(
         "button", GitHubOAuthProvider.BUTTON_HTML,
-        "path", "/oauth/login/" + PROVIDER_NAME
+        "path", getAuthBasePath() + "/" + PROVIDER_NAME
     ));
   }
 
@@ -176,13 +190,44 @@ public class GitHubExtension implements AuthExtension {
 
   @Override
   public IntegrationGroupEnum getIntegrationGroup() {
-    log.info("getIntegrationGroup");
     return IntegrationGroupEnum.AUTH;
   }
 
-  private static String getCallBackUrl(String pathValue) {
-    return StringUtils.isEmpty(pathValue) || pathValue.equals("/") ?
-        CALL_BACK_URL.replaceFirst("baseUrl}/", "baseUrl}/api/") :
-        CALL_BACK_URL;
+
+  private String getAuthBasePath() {
+    return fromCurrentContextPath().path(SSO_LOGIN_PATH).build().getPath();
   }
+
+  @Override
+  public Optional<AuthIntegrationStrategy> getStrategy() {
+    return Optional.of(gitHubIntegrationStrategySupplier.get());
+  }
+
+/*  private void initSchema() throws IOException {
+    try (Stream<Path> paths = Files.list(Paths.get(resourcesDir, SCHEMA_SCRIPTS_DIR))) {
+      FileSystemResource[] scriptResources = paths.sorted().map(FileSystemResource::new)
+          .toArray(FileSystemResource[]::new);
+      ResourceDatabasePopulator resourceDatabasePopulator = new ResourceDatabasePopulator(scriptResources);
+      resourceDatabasePopulator.execute(dataSource);
+    }
+  }
+
+  private void initApplicationListeners() {
+    ApplicationEventMulticaster multicaster = getApplicationEventMulticaster();
+    multicaster.addApplicationListener(pluginLoadedListenerSupplier.get());
+  }
+
+  private void destroyApplicationListeners() {
+    ApplicationEventMulticaster multicaster = getApplicationEventMulticaster();
+    multicaster.removeApplicationListener(pluginLoadedListenerSupplier.get());
+  }
+
+  private ApplicationEventMulticaster getApplicationEventMulticaster() {
+    return Optional.ofNullable(applicationEventMulticaster)
+        .orElseGet(() -> applicationContext.getBean(
+            AbstractApplicationContext.APPLICATION_EVENT_MULTICASTER_BEAN_NAME,
+            ApplicationEventMulticaster.class
+        ));
+  }*/
+
 }

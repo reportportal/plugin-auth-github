@@ -44,7 +44,7 @@ public class OrganizationResource {
   @Setter
   private String description;
 
-  private Map<String, Object> details = new HashMap<>();
+  private final Map<String, Object> details = new HashMap<>();
 
   @JsonAnyGetter
   public Map<String, Object> any() {

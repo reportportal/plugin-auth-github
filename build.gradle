@@ -17,6 +17,7 @@ dependencyManagement {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven { url = "https://build.shibboleth.net/nexus/content/repositories/releases/" }
 
@@ -34,14 +35,15 @@ dependencies {
             exclude group: 'org.springframework.modulith', module: 'spring-modulith-apt'
         }
     } else {
-        implementation 'com.github.reportportal:service-api:123a7af'
-        annotationProcessor('com.github.reportportal:service-api:123a7af') {
+        implementation 'com.github.reportportal:service-api:4d10487'
+        annotationProcessor('com.github.reportportal:service-api:4d10487') {
             exclude group: 'org.springframework.modulith', module: 'spring-modulith-apt'
         }
     }
     implementation 'jakarta.annotation:jakarta.annotation-api:3.0.0'
     implementation 'org.springframework.security:spring-security-oauth2-client'
     implementation 'org.springframework.security:spring-security-config'
+    implementation 'org.springframework:spring-webmvc'
 }
 
 java {
@@ -79,6 +81,9 @@ sourceSets {
 
 jar {
     from("src/main/resources") {
+        into("/resources")
+    }
+    from("ui/build") {
         into("/resources")
     }
     doFirst {
@@ -138,3 +143,5 @@ spotbugsMain {
         }
     }
 }
+
+javadoc.enabled = false
