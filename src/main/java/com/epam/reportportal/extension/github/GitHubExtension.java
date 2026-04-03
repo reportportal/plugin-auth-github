@@ -140,13 +140,11 @@ public class GitHubExtension implements AuthExtension {
 
   @Override
   public AuthenticationProvider getAuthenticationProvider() {
-    log.info("getAuthenticationProvider");
     return NO_OP_AUTH_PROVIDER;
   }
 
   @Override
   public Optional<OAuthProvider> getOAuthProvider() {
-    log.info("getOAuthProvider");
     return Optional.of(oauthProvider);
   }
 
@@ -158,7 +156,6 @@ public class GitHubExtension implements AuthExtension {
 
   @Override
   public Optional<Map<String, Object>> getAuthProviderInfo() {
-    log.info("getAuthProviderInfo");
     return Optional.of(Map.of(
         "button", GitHubOAuthProvider.BUTTON_HTML,
         "path", getAuthBasePath() + "/" + PROVIDER_NAME
@@ -167,7 +164,6 @@ public class GitHubExtension implements AuthExtension {
 
   @Override
   public Map<String, ?> getPluginParams() {
-    log.info("getPluginParams");
     Map<String, Object> params = new HashMap<>();
     params.put(NAME_FIELD, PLUGIN_NAME);
     params.put(DOCUMENTATION_LINK_FIELD, DOCUMENTATION_LINK);
@@ -178,13 +174,11 @@ public class GitHubExtension implements AuthExtension {
 
   @Override
   public CommonPluginCommand<?> getCommonCommand(String commandName) {
-    log.info("getCommonCommand: commandName={}", commandName);
     return commonCommands.get(commandName);
   }
 
   @Override
   public PluginCommand<?> getIntegrationCommand(String commandName) {
-    log.info("getIntegrationCommand: commandName={}", commandName);
     return null;
   }
 
@@ -202,32 +196,5 @@ public class GitHubExtension implements AuthExtension {
   public Optional<AuthIntegrationStrategy> getStrategy() {
     return Optional.of(gitHubIntegrationStrategySupplier.get());
   }
-
-/*  private void initSchema() throws IOException {
-    try (Stream<Path> paths = Files.list(Paths.get(resourcesDir, SCHEMA_SCRIPTS_DIR))) {
-      FileSystemResource[] scriptResources = paths.sorted().map(FileSystemResource::new)
-          .toArray(FileSystemResource[]::new);
-      ResourceDatabasePopulator resourceDatabasePopulator = new ResourceDatabasePopulator(scriptResources);
-      resourceDatabasePopulator.execute(dataSource);
-    }
-  }
-
-  private void initApplicationListeners() {
-    ApplicationEventMulticaster multicaster = getApplicationEventMulticaster();
-    multicaster.addApplicationListener(pluginLoadedListenerSupplier.get());
-  }
-
-  private void destroyApplicationListeners() {
-    ApplicationEventMulticaster multicaster = getApplicationEventMulticaster();
-    multicaster.removeApplicationListener(pluginLoadedListenerSupplier.get());
-  }
-
-  private ApplicationEventMulticaster getApplicationEventMulticaster() {
-    return Optional.ofNullable(applicationEventMulticaster)
-        .orElseGet(() -> applicationContext.getBean(
-            AbstractApplicationContext.APPLICATION_EVENT_MULTICASTER_BEAN_NAME,
-            ApplicationEventMulticaster.class
-        ));
-  }*/
 
 }

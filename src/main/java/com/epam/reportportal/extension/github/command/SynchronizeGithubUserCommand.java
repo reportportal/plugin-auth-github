@@ -49,7 +49,6 @@ public class SynchronizeGithubUserCommand extends AuthenticatedUserContextComman
 
   @Override
   public String getName() {
-    log.info("getName");
     return COMMAND_NAME;
   }
 
@@ -63,7 +62,6 @@ public class SynchronizeGithubUserCommand extends AuthenticatedUserContextComman
    */
   @Override
   protected OperationCompletionRS invokeCommand(PluginCommandRQ pluginCommandRq) {
-    log.info("invokeCommand");
     String accessToken = (String) pluginCommandRq.getArguments().get(ACCESS_TOKEN_PARAM);
     BusinessRule.expect(accessToken, Objects::nonNull)
         .verify(ErrorType.INCORRECT_AUTHENTICATION_TYPE, "Cannot synchronize GitHub User: access_token is missing");

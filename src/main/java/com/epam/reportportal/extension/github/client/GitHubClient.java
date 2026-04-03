@@ -22,6 +22,7 @@ import com.epam.reportportal.extension.github.model.UserResource;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
@@ -36,9 +37,9 @@ import org.springframework.web.client.RestTemplate;
 /**
  * Simple GitHub API client.
  */
+@Slf4j
 public class GitHubClient {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(GitHubClient.class);
 
   private static final String GITHUB_BASE_URL = "https://api.github.com";
 
@@ -51,7 +52,7 @@ public class GitHubClient {
       public void handleError(ClientHttpResponse response) {
         String errorMessage =
             "Unable to load GitHub data: " + new String(getResponseBody(response), StandardCharsets.UTF_8);
-        LOGGER.error(errorMessage);
+        log.error(errorMessage);
         throw new AuthenticationServiceException(errorMessage);
       }
     });
@@ -62,40 +63,40 @@ public class GitHubClient {
   }
 
   public static GitHubClient withAccessToken(String accessToken) {
-    LOGGER.info("withAccessToken");
+    log.debug("withAccessToken");
     return new GitHubClient(accessToken);
   }
 
   public UserResource getUser() {
-    LOGGER.info("getUser");
+    log.debug("getUser");
     return this.restTemplate.getForObject(GITHUB_BASE_URL + "/user", UserResource.class);
   }
 
   public Map<String, Object> getUserAttributes() {
-    LOGGER.info("getUserAttributes");
+    log.debug("getUserAttributes");
     return getForObject(GITHUB_BASE_URL + "/user", new ParameterizedTypeReference<>() {
     });
   }
 
   public List<EmailResource> getUserEmails() {
-    LOGGER.info("getUserEmails");
+    log.debug("getUserEmails");
     return getForObject(GITHUB_BASE_URL + "/user/emails", new ParameterizedTypeReference<>() {
     });
   }
 
   public List<OrganizationResource> getUserOrganizations(UserResource user) {
-    LOGGER.info("getUserOrganizations: login={}", user.getLogin());
+    log.debug("getUserOrganizations: login={}", user.getLogin());
     return getForObject(user.getOrganizationsUrl(), new ParameterizedTypeReference<>() {
     });
   }
 
   public ResponseEntity<Resource> downloadResource(String url) {
-    LOGGER.info("downloadResource: url={}", url);
+    log.debug("downloadResource: url={}", url);
     return this.restTemplate.getForEntity(url, Resource.class);
   }
 
   private <T> T getForObject(String url, ParameterizedTypeReference<T> type, Object... urlVars) {
-    LOGGER.info("getForObject: url={}", url);
+    log.debug("getForObject: url={}", url);
     return this.restTemplate.exchange(url, HttpMethod.GET, null, type, urlVars).getBody();
   }
 }
