@@ -50,7 +50,6 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jasypt.util.text.BasicTextEncryptor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.stereotype.Service;
@@ -65,9 +64,6 @@ public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
   private static final String CALL_BACK_URL = "{baseUrl}/sso/login/{registrationId}";
   private static final String ORGANIZATION_TYPE = "organization";
   private static final String ORGANIZATIONS_KEY = "organizations";
-
-  @Value("${server.servlet.context-path}")
-  private String pathValue;
 
   public GitHubIntegrationStrategy(IntegrationRepository integrationRepository,
       AuthRequestValidator<IntegrationRQ> updateAuthRequestValidator,
@@ -85,10 +81,12 @@ public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
     ClientRegistration springRegistration = CommonOAuth2Provider.GITHUB.getBuilder(integration.getType().getName())
         .clientId((String) integrationRq.getIntegrationParams().get(CLIENT_ID))
         .clientSecret((String) integrationRq.getIntegrationParams().get(CLIENT_SECRET))
-        .redirectUri(getCallBackUrl(pathValue))
+        .redirectUri(CALL_BACK_URL)
         .scope("read:user", "user:email", "read:org")
         .clientName(integration.getType().getName())
         .build();
+
+    log.debug("GitHub OAuth registration: {}", springRegistration);
 
     getGithubRegistrationParams(integration, params, springRegistration);
 
@@ -152,12 +150,6 @@ public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
           return restriction;
         })
         .collect(Collectors.toList());
-  }
-
-  private static String getCallBackUrl(String pathValue) {
-    return StringUtils.isEmpty(pathValue) || pathValue.equals("/") ?
-        CALL_BACK_URL.replaceFirst("baseUrl}/", "baseUrl}/api/") :
-        CALL_BACK_URL;
   }
 
 }

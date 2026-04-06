@@ -29,6 +29,7 @@ import com.epam.reportportal.base.infrastructure.persistence.binary.UserBinaryDa
 import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.UserRepository;
+import com.epam.reportportal.base.infrastructure.persistence.entity.enums.IntegrationAuthFlowEnum;
 import com.epam.reportportal.base.infrastructure.persistence.util.PersonalProjectService;
 import com.epam.reportportal.extension.AuthExtension;
 import com.epam.reportportal.extension.CommonPluginCommand;
@@ -113,11 +114,6 @@ public class GitHubExtension implements AuthExtension {
   private Supplier<GitHubIntegrationStrategy> gitHubIntegrationStrategySupplier;
 
 
-  @Autowired
-  public GitHubExtension(Map<String, Object> initParams) {
-    // initParams provided by PF4J at extension construction time
-  }
-
   @PostConstruct
   public void init() {
     log.info("Initializing GitHub OAuth extension");
@@ -195,6 +191,11 @@ public class GitHubExtension implements AuthExtension {
   @Override
   public Optional<AuthIntegrationStrategy> getStrategy() {
     return Optional.of(gitHubIntegrationStrategySupplier.get());
+  }
+
+  @Override
+  public Optional<IntegrationAuthFlowEnum> getAuthFlow() {
+    return Optional.of(IntegrationAuthFlowEnum.OAUTH);
   }
 
 }
