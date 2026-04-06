@@ -2,32 +2,24 @@ plugins {
     id "io.spring.dependency-management" version "1.1.7"
     id 'java'
     id 'jacoco'
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
-    id "com.github.node-gradle.node" version "7.1.0"
-}
-
-
-node {
-    version = '20.11.0'
-    npmVersion = '10.2.4'
-    download = true
-    workDir = layout.buildDirectory.dir('ui').get().asFile
-    npmWorkDir = file("${project.rootDir}/ui")
-    nodeProjectDir = file("${project.rootDir}/ui")
-
-}
-
-npm_run_build {
-    inputs.files fileTree("ui/src")
-    inputs.file 'ui/package.json'
-    inputs.file 'ui/package-lock.json'
-    outputs.dir 'ui/build'
+    id 'com.gradleup.shadow' version '9.3.1'
+    id "com.github.spotbugs" version "6.4.8"
+    id 'maven-publish'
+    id("io.freefair.lombok") version "9.2.0"
 }
 
 apply from: 'project-properties.gradle'
 
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:3.5.10"
+    }
+}
+
 repositories {
+    mavenLocal()
     mavenCentral()
+    maven { url = "https://build.shibboleth.net/nexus/content/repositories/releases/" }
 
     if (!releaseMode) {
         maven {
@@ -36,23 +28,28 @@ repositories {
     }
 }
 
-dependencyManagement {
-    imports {
-        mavenBom("org.springframework.boot:spring-boot-dependencies:3.4.4")
-        mavenBom("com.epam.reportportal:commons-bom:5.13.2")
-    }
-}
-
 dependencies {
     if (releaseMode) {
-        implementation 'com.epam.reportportal:plugin-api'
-        annotationProcessor 'com.epam.reportportal:plugin-api'
+        implementation 'com.epam.reportportal:service-api'
+        annotationProcessor('com.epam.reportportal:service-api') {
+            exclude group: 'org.springframework.modulith', module: 'spring-modulith-apt'
+        }
     } else {
-        implementation 'com.epam.reportportal:plugin-api:5.12.0'
-        annotationProcessor 'com.epam.reportportal:plugin-api:5.12.0'
+        implementation 'com.github.reportportal:service-api:2550296'
+        annotationProcessor('com.github.reportportal:service-api:2550296') {
+            exclude group: 'org.springframework.modulith', module: 'spring-modulith-apt'
+        }
     }
-
     implementation 'jakarta.annotation:jakarta.annotation-api:3.0.0'
+    implementation 'org.springframework.security:spring-security-oauth2-client'
+    implementation 'org.springframework.security:spring-security-config'
+    implementation 'org.springframework:spring-webmvc'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
 }
 
 test {
@@ -89,24 +86,22 @@ jar {
     from("ui/build") {
         into("/resources")
     }
-    manifest {
-        attributes(
-                "Class-Path": configurations.runtimeClasspath.collect { it.getName() }.join(' '),
-                "Plugin-Class": "${pluginClass}",
-                "Plugin-Id": "${pluginId}",
-                "Plugin-Name": "${pluginName}",
-                "Plugin-Version": "${project.version}",
-                "Plugin-Provider": "${provider}",
-                "Plugin-License": "${license}",
-                "Plugin-Description": "${project.description}",
-                "Plugin-Documentation": "${documentation}",
-                "Plugin-Metadata-isIntegrationsAllowed": "${isIntegrationsAllowed}",
-                "Plugin-Metadata-embedded": "${isEmbedded}",
-                "Plugin-Metadata-isMultiple": "${isMultiple}",
-                "Plugin-Binary-Data-main": "${mainBinaryData}",
-                "Plugin-Metadata-yourAdditionalMetadata": "${yourAdditionalMetadata}",
-                "Plugin-Property-yourAdditionalProperty": "${yourAdditionalProperty}",
-        )
+    doFirst {
+        manifest {
+            attributes(
+                    "Class-Path": configurations.compileClasspath.collect { it.getName() }.join(' '),
+                    "Plugin-Class": "${pluginClass}",
+                    "Plugin-Id": "${pluginId}",
+                    "Plugin-Name": "${pluginName}",
+                    "Plugin-Version": "${project.version}",
+                    "Plugin-Provider": "${provider}",
+                    "Plugin-License": "${license}",
+                    "Plugin-Description": "${project.description}",
+                    "Plugin-Documentation": "${documentation}",
+                    "Plugin-Metadata-isIntegrationsAllowed": "${isIntegrationsAllowed}",
+                    "Plugin-Binary-Data-main": "${mainBinaryData}"
+            )
+        }
     }
 }
 
@@ -114,24 +109,21 @@ shadowJar {
     from("src/main/resources") {
         into("/resources")
     }
-    from("ui/build") {
-        into("/resources")
-    }
-    configurations = [project.configurations.runtimeClasspath]
+    configurations = [project.configurations.compileClasspath]
     zip64 = true
-    dependencies {
-    }
+    minimize()
+    // dependencies {    }
 }
 
-tasks.register('plugin', Jar) { task ->
+tasks.register('plugin', Jar) {
     getArchiveBaseName().set("plugin-${pluginId}")
     into('classes') {
         with jar
     }
     into('lib') {
-        from configurations.runtimeClasspath
+        from configurations.compileClasspath
     }
-    getArchiveExtension().set('zip')
+    archiveExtension.set('zip')
 }
 
 tasks.register('assemblePlugin', Copy) {
@@ -140,8 +132,16 @@ tasks.register('assemblePlugin', Copy) {
 }
 
 tasks.register('assemblePlugins', Copy) {
-    dependsOn subprojects*.tasks*.assemblePlugin
+    dependsOn subprojects.assemblePlugin
 }
 
-compileJava.dependsOn npm_run_build
+spotbugsMain {
+    ignoreFailures = true
+    reports {
+        html {
+            required = true
+        }
+    }
+}
 
+javadoc.enabled = false
