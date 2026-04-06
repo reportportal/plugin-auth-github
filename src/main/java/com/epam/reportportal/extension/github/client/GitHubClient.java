@@ -28,6 +28,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
@@ -42,8 +43,14 @@ public class GitHubClient {
 
   private final RestTemplate restTemplate;
 
+  private static final int CONNECT_TIMEOUT_MS = 5_000;
+  private static final int READ_TIMEOUT_MS = 30_000;
+
   private GitHubClient(String accessToken) {
-    this.restTemplate = new RestTemplate();
+    SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+    requestFactory.setConnectTimeout(CONNECT_TIMEOUT_MS);
+    requestFactory.setReadTimeout(READ_TIMEOUT_MS);
+    this.restTemplate = new RestTemplate(requestFactory);
     this.restTemplate.setErrorHandler(new DefaultResponseErrorHandler() {
       @Override
       public void handleError(ClientHttpResponse response) {

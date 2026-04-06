@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 /**
@@ -86,9 +87,8 @@ public class GitHubOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         .anyMatch(allowedOrgs::contains);
 
     if (!hasAccess) {
-      throw new OAuth2AuthenticationException(
-          "User '" + user.getLogin() + "' does not belong to allowed GitHub organization"
-      );
+      throw new OAuth2AuthenticationException(new OAuth2Error("access_denied",
+          "User '" + user.getLogin() + "' does not belong to allowed GitHub organization", null));
     }
   }
 }

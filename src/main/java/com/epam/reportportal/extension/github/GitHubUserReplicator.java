@@ -146,16 +146,18 @@ public class GitHubUserReplicator extends AbstractUserReplicator {
     if (avatarUrl == null) {
       return;
     }
-    ResponseEntity<Resource> photoRs = gitHubClient.downloadResource(avatarUrl);
-    try (InputStream photoStream = Objects.requireNonNull(photoRs.getBody()).getInputStream()) {
-      BinaryData photo = new BinaryData(
-          Objects.requireNonNull(photoRs.getHeaders().getContentType()).toString(),
-          photoRs.getBody().contentLength(),
-          photoStream
-      );
-      uploadPhoto(user, photo);
-    } catch (IOException e) {
-      LOGGER.error("Unable to load photo for user {}", user.getLogin());
+    try {
+      ResponseEntity<Resource> photoRs = gitHubClient.downloadResource(avatarUrl);
+      try (InputStream photoStream = Objects.requireNonNull(photoRs.getBody()).getInputStream()) {
+        BinaryData photo = new BinaryData(
+            Objects.requireNonNull(photoRs.getHeaders().getContentType()).toString(),
+            photoRs.getBody().contentLength(),
+            photoStream
+        );
+        uploadPhoto(user, photo);
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Unable to load avatar for user '{}', skipping: {}", user.getLogin(), e.getMessage(), e);
     }
   }
 
@@ -175,6 +177,7 @@ public class GitHubUserReplicator extends AbstractUserReplicator {
         .filter(StringUtils::isNotBlank)
         .map(NORMALIZE_STRING)
         .orElseGet(() -> retrievePrimaryEmail(client)
+            .map(NORMALIZE_STRING)
             .filter(StringUtils::isNotBlank)
             .orElseThrow(
                 () -> new UserSynchronizationException("User 'email' has not been provided")));
