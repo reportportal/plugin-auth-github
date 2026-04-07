@@ -152,10 +152,12 @@ public class GitHubExtension implements AuthExtension {
 
   @Override
   public Optional<Map<String, Object>> getAuthProviderInfo() {
-    return Optional.of(Map.of(
-        "button", GitHubOAuthProvider.BUTTON_HTML,
-        "path", getAuthBasePath() + "/" + PROVIDER_NAME
-    ));
+    return getAuthIntegrationType()
+        .filter(type -> !integrationRepository.findAllByTypeIn(type).isEmpty())
+        .map(_ -> Map.of(
+            "button", GitHubOAuthProvider.BUTTON_HTML,
+            "path", getAuthBasePath() + "/" + PROVIDER_NAME
+        ));
   }
 
   @Override
