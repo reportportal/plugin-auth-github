@@ -42,7 +42,6 @@ import com.epam.reportportal.base.infrastructure.persistence.entity.integration.
 import com.epam.reportportal.base.model.integration.IntegrationRQ;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +61,6 @@ import org.springframework.stereotype.Service;
 public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
 
   private static final String CALL_BACK_URL = "{baseUrl}/sso/login/{registrationId}";
-  private static final String ORGANIZATION_TYPE = "organization";
   private static final String ORGANIZATIONS_KEY = "organizations";
 
   public GitHubIntegrationStrategy(IntegrationRepository integrationRepository,
@@ -131,25 +129,23 @@ public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
   }
 
 
-  private static List<Map<String, Object>> buildRestrictions(Map<String, String> restrictions) {
+  private static Map<String, Object> buildRestrictions(Map<String, String> restrictions) {
     String organizations = ofNullable(restrictions)
         .map(r -> r.get(ORGANIZATIONS_KEY))
         .orElse("");
 
+    Map<String, Object> result = new HashMap<>();
     if (StringUtils.isBlank(organizations)) {
-      return Collections.emptyList();
+      return result;
     }
 
-    return Arrays.stream(organizations.split(","))
+    List<String> orgs = Arrays.stream(organizations.split(","))
         .map(String::trim)
         .filter(StringUtils::isNotBlank)
-        .map(org -> {
-          Map<String, Object> restriction = new HashMap<>();
-          restriction.put("type", ORGANIZATION_TYPE);
-          restriction.put("value", org);
-          return restriction;
-        })
         .collect(Collectors.toList());
+
+    result.put(ORGANIZATIONS_KEY, orgs);
+    return result;
   }
 
 }
