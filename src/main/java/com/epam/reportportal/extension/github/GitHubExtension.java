@@ -41,15 +41,23 @@ import com.epam.reportportal.extension.github.service.GitHubIntegrationStrategy;
 import com.epam.reportportal.extension.github.service.GitHubRequiredParamNamesProvider;
 import com.epam.reportportal.extension.github.utils.MemoizingSupplier;
 import jakarta.annotation.PostConstruct;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
+import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.pf4j.Extension;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 
@@ -107,15 +115,19 @@ public class GitHubExtension implements AuthExtension {
   @Autowired
   private BasicTextEncryptor encryptor;
 
+  @Autowired
+  private DataSource dataSource;
+
   private GitHubUserReplicator replicator;
   private GitHubOAuthProvider oauthProvider;
   private Map<String, CommonPluginCommand<?>> commonCommands;
 
   private Supplier<GitHubIntegrationStrategy> gitHubIntegrationStrategySupplier;
+  private String resourcesDir;
 
 
   @PostConstruct
-  public void init() {
+  public void init() throws IOException {
     log.info("Initializing GitHub OAuth extension");
     this.gitHubIntegrationStrategySupplier = new MemoizingSupplier<>(
         () -> new GitHubIntegrationStrategy(integrationRepository,
@@ -130,9 +142,11 @@ public class GitHubExtension implements AuthExtension {
     SynchronizeGithubUserCommand syncCommand = new SynchronizeGithubUserCommand(replicator);
     commonCommands = Map.of(syncCommand.getName(), syncCommand);
 
-/*    initApplicationListeners();
-    initSchema();*/
+    initSchema();
+
   }
+
+
 
   @Override
   public AuthenticationProvider getAuthenticationProvider() {
@@ -200,4 +214,14 @@ public class GitHubExtension implements AuthExtension {
     return Optional.of(IntegrationAuthFlowEnum.OAUTH);
   }
 
+
+  private void initSchema() throws IOException {
+
+    try (Stream<Path> paths = Files.list(Paths.get(resourcesDir, SCHEMA_SCRIPTS_DIR))) {
+      FileSystemResource[] scriptResources = paths.sorted().map(FileSystemResource::new)
+          .toArray(FileSystemResource[]::new);
+      ResourceDatabasePopulator resourceDatabasePopulator = new ResourceDatabasePopulator(scriptResources);
+      resourceDatabasePopulator.execute(dataSource);
+    }
+  }
 }
