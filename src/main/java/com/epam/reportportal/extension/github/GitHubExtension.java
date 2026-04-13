@@ -27,6 +27,7 @@ import com.epam.reportportal.auth.oauth.OAuthProvider;
 import com.epam.reportportal.base.infrastructure.commons.ContentTypeResolver;
 import com.epam.reportportal.base.infrastructure.persistence.binary.UserBinaryDataService;
 import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationTypeRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.UserRepository;
 import com.epam.reportportal.base.infrastructure.persistence.entity.enums.IntegrationAuthFlowEnum;
@@ -36,28 +37,27 @@ import com.epam.reportportal.extension.CommonPluginCommand;
 import com.epam.reportportal.extension.IntegrationGroupEnum;
 import com.epam.reportportal.extension.PluginCommand;
 import com.epam.reportportal.extension.github.command.SynchronizeGithubUserCommand;
+import com.epam.reportportal.extension.github.event.listener.PluginLoadedEventListener;
 import com.epam.reportportal.extension.github.oauth.GitHubOAuthProvider;
 import com.epam.reportportal.extension.github.service.GitHubIntegrationStrategy;
 import com.epam.reportportal.extension.github.service.GitHubRequiredParamNamesProvider;
 import com.epam.reportportal.extension.github.utils.MemoizingSupplier;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.pf4j.Extension;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.event.ApplicationEventMulticaster;
+import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 
@@ -66,11 +66,12 @@ import org.springframework.security.core.Authentication;
  */
 @Extension
 @Slf4j
-public class GitHubExtension implements AuthExtension {
+public class GitHubExtension implements AuthExtension, DisposableBean {
 
   public static final String SSO_LOGIN_PATH = "/oauth/login";
-  public static final String SCHEMA_SCRIPTS_DIR = "schema";
+  public static final String SCHEMA_SCRIPTS_DIR = "resources/schema";
 
+  private static final String PLUGIN_ID = "github";
   private static final String PLUGIN_NAME = "GitHub OAuth Plugin";
   private static final String DOCUMENTATION_LINK = "https://reportportal.io/docs/plugins/authorization/GitHubAuthorization";
   private static final String DOCUMENTATION_LINK_FIELD = "documentationLink";
@@ -87,6 +88,12 @@ public class GitHubExtension implements AuthExtension {
       return false;
     }
   };
+
+  @Autowired
+  private ApplicationContext applicationContext;
+
+  @Autowired
+  private IntegrationTypeRepository integrationTypeRepository;
 
   @Autowired
   private UserRepository userRepository;
@@ -123,7 +130,7 @@ public class GitHubExtension implements AuthExtension {
   private Map<String, CommonPluginCommand<?>> commonCommands;
 
   private Supplier<GitHubIntegrationStrategy> gitHubIntegrationStrategySupplier;
-  private String resourcesDir;
+  private Supplier<PluginLoadedEventListener> pluginLoadedListenerSupplier;
 
 
   @PostConstruct
@@ -134,6 +141,10 @@ public class GitHubExtension implements AuthExtension {
             new UpdateAuthRequestValidator(new GitHubRequiredParamNamesProvider()), integrationDuplicateValidator,
             encryptor));
 
+    this.pluginLoadedListenerSupplier = new MemoizingSupplier<>(
+        () -> new PluginLoadedEventListener(PLUGIN_ID, integrationTypeRepository, integrationRepository,
+            integrationType -> integrationType, dataSource));
+
     replicator = new GitHubUserReplicator(
         userRepository, projectRepository, personalProjectService,
         userBinaryDataService, contentTypeResolver, userEventPublisher
@@ -142,11 +153,25 @@ public class GitHubExtension implements AuthExtension {
     SynchronizeGithubUserCommand syncCommand = new SynchronizeGithubUserCommand(replicator);
     commonCommands = Map.of(syncCommand.getName(), syncCommand);
 
-    initSchema();
-
+    initListeners();
   }
 
+  private void initListeners() {
+    ApplicationEventMulticaster applicationEventMulticaster = applicationContext.getBean(
+        AbstractApplicationContext.APPLICATION_EVENT_MULTICASTER_BEAN_NAME,
+        ApplicationEventMulticaster.class
+    );
+    applicationEventMulticaster.addApplicationListener(pluginLoadedListenerSupplier.get());
+  }
 
+  @Override
+  public void destroy() {
+    ApplicationEventMulticaster applicationEventMulticaster = applicationContext.getBean(
+        AbstractApplicationContext.APPLICATION_EVENT_MULTICASTER_BEAN_NAME,
+        ApplicationEventMulticaster.class
+    );
+    applicationEventMulticaster.removeApplicationListener(pluginLoadedListenerSupplier.get());
+  }
 
   @Override
   public AuthenticationProvider getAuthenticationProvider() {
@@ -214,14 +239,4 @@ public class GitHubExtension implements AuthExtension {
     return Optional.of(IntegrationAuthFlowEnum.OAUTH);
   }
 
-
-  private void initSchema() throws IOException {
-
-    try (Stream<Path> paths = Files.list(Paths.get(resourcesDir, SCHEMA_SCRIPTS_DIR))) {
-      FileSystemResource[] scriptResources = paths.sorted().map(FileSystemResource::new)
-          .toArray(FileSystemResource[]::new);
-      ResourceDatabasePopulator resourceDatabasePopulator = new ResourceDatabasePopulator(scriptResources);
-      resourceDatabasePopulator.execute(dataSource);
-    }
-  }
 }
