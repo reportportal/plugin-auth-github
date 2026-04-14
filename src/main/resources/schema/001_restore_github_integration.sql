@@ -13,7 +13,7 @@ BEGIN
                true
         FROM integration_backup ib
         WHERE ib.auth_type = ''github''
-        ON CONFLICT (id) DO NOTHING;
+        ON CONFLICT DO NOTHING;
 
         -- delete backup record
         DELETE from integration_backup ib WHERE ib.auth_type = ''github'';
