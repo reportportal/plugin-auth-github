@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
@@ -67,7 +68,8 @@ public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
 
   @Override
   protected void populateIntegrationDetails(Integration integration, IntegrationRQ integrationRq) {
-    integration.setName(integrationRq.getName());
+    Optional.ofNullable(integrationRq.getName())
+        .ifPresent(integration::setName);
 
     var params = integrationRq.getIntegrationParams();
 
