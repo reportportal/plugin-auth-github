@@ -8,7 +8,7 @@ BEGIN
         SELECT ib.name,
                (SELECT it.id FROM integration_type it WHERE it.auth_flow = ''OAUTH'' AND it.group_type = ''AUTH'' AND it.plugin_type = ''EXTENSION''),
                ib.params,
-               ''SYSTEM'',
+               creator,
                now(),
                true
         FROM integration_backup ib
