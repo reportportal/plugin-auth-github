@@ -25,7 +25,6 @@ import com.epam.reportportal.extension.github.GitHubUserReplicator;
 import com.epam.reportportal.extension.github.client.GitHubClient;
 import com.epam.reportportal.extension.github.model.OrganizationResource;
 import com.epam.reportportal.extension.github.model.UserResource;
-import com.google.common.base.Splitter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -74,8 +73,7 @@ public class GitHubOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
   private List<String> parseAllowedOrganizations(OAuthRegistrationResource registration) {
     return Optional.ofNullable(registration.getRestrictions())
-        .map(restrictions -> restrictions.get("organizations"))
-        .map(orgs -> Splitter.on(',').omitEmptyStrings().splitToList(orgs))
+        .map(restrictions -> (List<String>) (Object) restrictions.get("organizations"))
         .orElse(Collections.emptyList());
   }
 

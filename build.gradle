@@ -5,7 +5,7 @@ plugins {
     id 'com.gradleup.shadow' version '9.3.1'
     id "com.github.spotbugs" version "6.4.8"
     id 'maven-publish'
-    id("io.freefair.lombok") version "9.2.0"
+    id("io.freefair.lombok") version "9.5.0"
 }
 
 apply from: 'project-properties.gradle'
@@ -35,8 +35,8 @@ dependencies {
             exclude group: 'org.springframework.modulith', module: 'spring-modulith-apt'
         }
     } else {
-        implementation 'com.github.reportportal:service-api:2550296'
-        annotationProcessor('com.github.reportportal:service-api:2550296') {
+        implementation 'com.github.reportportal:service-api:336be2c'
+        annotationProcessor('com.github.reportportal:service-api:336be2c') {
             exclude group: 'org.springframework.modulith', module: 'spring-modulith-apt'
         }
     }

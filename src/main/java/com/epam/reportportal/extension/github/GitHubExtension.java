@@ -30,12 +30,14 @@ import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationRepo
 import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationTypeRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.UserRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationRepositoryCustom;
 import com.epam.reportportal.base.infrastructure.persistence.entity.enums.IntegrationAuthFlowEnum;
 import com.epam.reportportal.base.infrastructure.persistence.util.PersonalProjectService;
 import com.epam.reportportal.extension.AuthExtension;
 import com.epam.reportportal.extension.CommonPluginCommand;
 import com.epam.reportportal.extension.IntegrationGroupEnum;
 import com.epam.reportportal.extension.PluginCommand;
+import com.epam.reportportal.extension.command.ExtensionCommand;
 import com.epam.reportportal.extension.github.command.SynchronizeGithubUserCommand;
 import com.epam.reportportal.extension.github.event.listener.PluginLoadedEventListener;
 import com.epam.reportportal.extension.github.oauth.GitHubOAuthProvider;
@@ -120,6 +122,9 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
   private IntegrationDuplicateValidator integrationDuplicateValidator;
 
   @Autowired
+  private OrganizationRepositoryCustom organizationRepository;
+
+  @Autowired
   private BasicTextEncryptor encryptor;
 
   @Autowired
@@ -127,7 +132,7 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
 
   private GitHubUserReplicator replicator;
   private GitHubOAuthProvider oauthProvider;
-  private Map<String, CommonPluginCommand<?>> commonCommands;
+  private Map<String, ExtensionCommand<?>> commonCommands;
 
   private Supplier<GitHubIntegrationStrategy> gitHubIntegrationStrategySupplier;
   private Supplier<PluginLoadedEventListener> pluginLoadedListenerSupplier;
@@ -146,11 +151,10 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
             integrationType -> integrationType, dataSource));
 
     replicator = new GitHubUserReplicator(
-        userRepository, projectRepository, personalProjectService,
-        userBinaryDataService, contentTypeResolver, userEventPublisher
+        userRepository, userBinaryDataService, contentTypeResolver, userEventPublisher
     );
     oauthProvider = new GitHubOAuthProvider(replicator);
-    SynchronizeGithubUserCommand syncCommand = new SynchronizeGithubUserCommand(replicator);
+    SynchronizeGithubUserCommand syncCommand = new SynchronizeGithubUserCommand(replicator, projectRepository, organizationRepository);
     commonCommands = Map.of(syncCommand.getName(), syncCommand);
 
     initListeners();
@@ -211,7 +215,12 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
 
   @Override
   public CommonPluginCommand<?> getCommonCommand(String commandName) {
-    return commonCommands.get(commandName);
+    return null;
+  }
+
+  @Override
+  public Map<String, ExtensionCommand<?>> getCommonExtensionCommands() {
+    return commonCommands;
   }
 
   @Override

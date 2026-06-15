@@ -17,34 +17,30 @@
 package com.epam.reportportal.extension.github.command;
 
 import com.epam.reportportal.api.model.PluginCommandRQ;
+import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationRepositoryCustom;
+import com.epam.reportportal.base.infrastructure.persistence.entity.user.UserRole;
 import com.epam.reportportal.base.infrastructure.rules.commons.validation.BusinessRule;
 import com.epam.reportportal.base.infrastructure.rules.exception.ErrorType;
 import com.epam.reportportal.base.reporting.OperationCompletionRS;
+import com.epam.reportportal.extension.command.AbstractExtensionCommand;
 import com.epam.reportportal.extension.github.GitHubUserReplicator;
-import com.epam.reportportal.extension.role.AuthenticatedUserContextCommand;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Command to synchronize GitHub user information.
- *
- * @author <a href="mailto:andrei_varabyeu@epam.com">Andrei Varabyeu</a>
- */
 @Slf4j
-public class SynchronizeGithubUserCommand extends AuthenticatedUserContextCommand {
+public class SynchronizeGithubUserCommand extends AbstractExtensionCommand<OperationCompletionRS> {
 
   private static final String COMMAND_NAME = "synchronize";
   private static final String ACCESS_TOKEN_PARAM = "access_token";
 
   private final GitHubUserReplicator replicator;
 
-  /**
-   * Instantiates a new Synchronize GitHub user command.
-   *
-   * @param replicator the replicator
-   */
-  public SynchronizeGithubUserCommand(GitHubUserReplicator replicator) {
+  public SynchronizeGithubUserCommand(GitHubUserReplicator replicator,
+      ProjectRepository projectRepository, OrganizationRepositoryCustom organizationRepository) {
+    super(projectRepository, organizationRepository);
     this.replicator = replicator;
+    this.minUserRole = UserRole.USER;
   }
 
   @Override
@@ -52,14 +48,6 @@ public class SynchronizeGithubUserCommand extends AuthenticatedUserContextComman
     return COMMAND_NAME;
   }
 
-  /**
-   * {@inheritDoc}
-   * <p>
-   * Synchronizes GitHub user information using the provided access token.
-   *
-   * @param pluginCommandRq the plugin command rq
-   * @return the operation completion rs
-   */
   @Override
   protected OperationCompletionRS invokeCommand(PluginCommandRQ pluginCommandRq) {
     String accessToken = (String) pluginCommandRq.getArguments().get(ACCESS_TOKEN_PARAM);
