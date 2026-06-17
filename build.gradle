@@ -35,8 +35,8 @@ dependencies {
             exclude group: 'org.springframework.modulith', module: 'spring-modulith-apt'
         }
     } else {
-        implementation 'com.github.reportportal:service-api:336be2c'
-        annotationProcessor('com.github.reportportal:service-api:336be2c') {
+        implementation 'com.github.reportportal:service-api:b6fe35f3df'
+        annotationProcessor('com.github.reportportal:service-api:b6fe35f3df') {
             exclude group: 'org.springframework.modulith', module: 'spring-modulith-apt'
         }
     }

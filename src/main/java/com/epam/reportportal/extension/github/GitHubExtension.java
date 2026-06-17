@@ -29,10 +29,11 @@ import com.epam.reportportal.base.infrastructure.persistence.binary.UserBinaryDa
 import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationTypeRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectUserRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.UserRepository;
-import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationRepositoryCustom;
+import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationUserRepository;
 import com.epam.reportportal.base.infrastructure.persistence.entity.enums.IntegrationAuthFlowEnum;
-import com.epam.reportportal.base.infrastructure.persistence.util.PersonalProjectService;
 import com.epam.reportportal.extension.AuthExtension;
 import com.epam.reportportal.extension.CommonPluginCommand;
 import com.epam.reportportal.extension.IntegrationGroupEnum;
@@ -101,10 +102,12 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
   private UserRepository userRepository;
 
   @Autowired
-  private ProjectRepository projectRepository;
+  private OrganizationUserRepository organizationUserRepository;
+  @Autowired
+  private ProjectUserRepository projectUserRepository;
 
   @Autowired
-  private PersonalProjectService personalProjectService;
+  private ProjectRepository projectRepository;
 
   @Autowired
   private UserBinaryDataService userBinaryDataService;
@@ -122,7 +125,7 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
   private IntegrationDuplicateValidator integrationDuplicateValidator;
 
   @Autowired
-  private OrganizationRepositoryCustom organizationRepository;
+  private OrganizationRepository organizationRepository;
 
   @Autowired
   private BasicTextEncryptor encryptor;
@@ -154,7 +157,9 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
         userRepository, userBinaryDataService, contentTypeResolver, userEventPublisher
     );
     oauthProvider = new GitHubOAuthProvider(replicator);
-    SynchronizeGithubUserCommand syncCommand = new SynchronizeGithubUserCommand(replicator, projectRepository, organizationRepository);
+    SynchronizeGithubUserCommand syncCommand = new SynchronizeGithubUserCommand(replicator, projectRepository,
+        organizationRepository,
+        organizationUserRepository, projectUserRepository);
     commonCommands = Map.of(syncCommand.getName(), syncCommand);
 
     initListeners();

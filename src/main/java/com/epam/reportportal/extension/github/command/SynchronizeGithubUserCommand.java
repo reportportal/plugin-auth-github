@@ -18,7 +18,10 @@ package com.epam.reportportal.extension.github.command;
 
 import com.epam.reportportal.api.model.PluginCommandRQ;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectUserRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationRepositoryCustom;
+import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationUserRepository;
 import com.epam.reportportal.base.infrastructure.persistence.entity.user.UserRole;
 import com.epam.reportportal.base.infrastructure.rules.commons.validation.BusinessRule;
 import com.epam.reportportal.base.infrastructure.rules.exception.ErrorType;
@@ -37,8 +40,9 @@ public class SynchronizeGithubUserCommand extends AbstractExtensionCommand<Opera
   private final GitHubUserReplicator replicator;
 
   public SynchronizeGithubUserCommand(GitHubUserReplicator replicator,
-      ProjectRepository projectRepository, OrganizationRepositoryCustom organizationRepository) {
-    super(projectRepository, organizationRepository);
+      ProjectRepository projectRepository, OrganizationRepository organizationRepository,
+      OrganizationUserRepository organizationUserRepository, ProjectUserRepository projectUserRepository) {
+    super(projectRepository, organizationUserRepository, organizationRepository, projectUserRepository);
     this.replicator = replicator;
     this.minUserRole = UserRole.USER;
   }
