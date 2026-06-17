@@ -54,7 +54,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
-import org.jasypt.util.text.BasicTextEncryptor;
+import com.epam.reportportal.base.core.integration.util.IntegrationParamsEncryptor;
 import org.pf4j.Extension;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,7 +75,7 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
   public static final String SCHEMA_SCRIPTS_DIR = "resources/schema";
 
   private static final String PLUGIN_ID = "github";
-  private static final String PLUGIN_NAME = "GitHub OAuth Plugin";
+  private static final String PLUGIN_NAME = "GitHub OAuth";
   private static final String DOCUMENTATION_LINK = "https://reportportal.io/docs/plugins/authorization/GitHubAuthorization";
   private static final String DOCUMENTATION_LINK_FIELD = "documentationLink";
   private static final String NAME_FIELD = "name";
@@ -128,7 +128,7 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
   private OrganizationRepository organizationRepository;
 
   @Autowired
-  private BasicTextEncryptor encryptor;
+  private IntegrationParamsEncryptor paramsEncryptor;
 
   @Autowired
   private DataSource dataSource;
@@ -147,7 +147,7 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
     this.gitHubIntegrationStrategySupplier = new MemoizingSupplier<>(
         () -> new GitHubIntegrationStrategy(integrationRepository,
             new UpdateAuthRequestValidator(new GitHubRequiredParamNamesProvider()), integrationDuplicateValidator,
-            encryptor));
+            paramsEncryptor));
 
     this.pluginLoadedListenerSupplier = new MemoizingSupplier<>(
         () -> new PluginLoadedEventListener(PLUGIN_ID, integrationTypeRepository, integrationRepository,

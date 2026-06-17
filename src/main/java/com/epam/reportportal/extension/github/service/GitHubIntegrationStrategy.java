@@ -44,7 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.jasypt.util.text.BasicTextEncryptor;
+import com.epam.reportportal.base.core.integration.util.IntegrationParamsEncryptor;
 import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.stereotype.Service;
@@ -62,8 +62,9 @@ public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
   public GitHubIntegrationStrategy(IntegrationRepository integrationRepository,
       AuthRequestValidator<IntegrationRQ> updateAuthRequestValidator,
       IntegrationDuplicateValidator integrationDuplicateValidator,
-      BasicTextEncryptor encryptor) {
-    super(integrationRepository, updateAuthRequestValidator, integrationDuplicateValidator);
+      IntegrationParamsEncryptor paramsEncryptor) {
+    super(integrationRepository, updateAuthRequestValidator, integrationDuplicateValidator,
+        paramsEncryptor);
   }
 
   @Override
