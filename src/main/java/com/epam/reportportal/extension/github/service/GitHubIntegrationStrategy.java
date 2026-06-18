@@ -35,6 +35,7 @@ import com.epam.reportportal.auth.integration.handler.impl.strategy.AuthIntegrat
 import com.epam.reportportal.auth.integration.validator.duplicate.IntegrationDuplicateValidator;
 import com.epam.reportportal.auth.integration.validator.request.AuthRequestValidator;
 import com.epam.reportportal.auth.model.AbstractAuthResource;
+import com.epam.reportportal.base.core.integration.util.IntegrationParamsEncryptor;
 import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationRepository;
 import com.epam.reportportal.base.infrastructure.persistence.entity.integration.Integration;
 import com.epam.reportportal.base.model.integration.IntegrationRQ;
@@ -42,9 +43,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import com.epam.reportportal.base.core.integration.util.IntegrationParamsEncryptor;
 import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.stereotype.Service;
@@ -69,8 +68,7 @@ public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
 
   @Override
   protected void populateIntegrationDetails(Integration integration, IntegrationRQ integrationRq) {
-    Optional.ofNullable(integrationRq.getName())
-        .ifPresent(integration::setName);
+    integration.setName(integration.getType().getName());
 
     var params = integrationRq.getIntegrationParams();
 
