@@ -79,6 +79,9 @@ public class GitHubOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
   private void validateUserOrganizations(UserResource user, GitHubClient client,
       List<String> allowedOrgs) {
+    if (allowedOrgs.isEmpty()) {
+      return;
+    }
     boolean hasAccess = client.getUserOrganizations(user)
         .stream()
         .map(OrganizationResource::getLogin)
