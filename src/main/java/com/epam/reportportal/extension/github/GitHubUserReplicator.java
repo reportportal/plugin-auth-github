@@ -25,23 +25,21 @@ import com.epam.reportportal.auth.oauth.UserSynchronizationException;
 import com.epam.reportportal.base.infrastructure.commons.ContentTypeResolver;
 import com.epam.reportportal.base.infrastructure.persistence.binary.UserBinaryDataService;
 import com.epam.reportportal.base.infrastructure.persistence.commons.ReportPortalUser;
-import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.UserRepository;
 import com.epam.reportportal.base.infrastructure.persistence.entity.attachment.BinaryData;
 import com.epam.reportportal.base.infrastructure.persistence.entity.user.User;
 import com.epam.reportportal.base.infrastructure.persistence.entity.user.UserRole;
 import com.epam.reportportal.base.infrastructure.persistence.entity.user.UserType;
-import com.epam.reportportal.base.infrastructure.persistence.util.PersonalProjectService;
 import com.epam.reportportal.base.infrastructure.rules.exception.ErrorType;
 import com.epam.reportportal.base.infrastructure.rules.exception.ReportPortalException;
 import com.epam.reportportal.extension.github.client.GitHubClient;
 import com.epam.reportportal.extension.github.model.EmailResource;
 import com.epam.reportportal.extension.github.model.UserResource;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
@@ -50,15 +48,14 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Replicates GitHub account info with internal ReportPortal's database.
  */
+@Slf4j
 public class GitHubUserReplicator extends AbstractUserReplicator {
 
   private final UserEventPublisher userEventPublisher;
 
-  public GitHubUserReplicator(UserRepository userRepository, ProjectRepository projectRepository,
-      PersonalProjectService personalProjectService, UserBinaryDataService userBinaryDataService,
+  public GitHubUserReplicator(UserRepository userRepository, UserBinaryDataService userBinaryDataService,
       ContentTypeResolver contentTypeResolver, UserEventPublisher userEventPublisher) {
-    super(userRepository, projectRepository, personalProjectService, userBinaryDataService,
-        contentTypeResolver);
+    super(userRepository, contentTypeResolver, userBinaryDataService);
     this.userEventPublisher = userEventPublisher;
   }
 
@@ -68,7 +65,7 @@ public class GitHubUserReplicator extends AbstractUserReplicator {
    * @param accessToken GitHub access token
    */
   public void synchronizeUser(String accessToken) {
-    LOGGER.info("synchronizeUser");
+    log.info("synchronizeUser");
     GitHubClient gitHubClient = GitHubClient.withAccessToken(accessToken);
     UserResource userResource = gitHubClient.getUser();
 
@@ -97,7 +94,7 @@ public class GitHubUserReplicator extends AbstractUserReplicator {
    */
   @Transactional
   public ReportPortalUser replicateUser(UserResource userResource, GitHubClient gitHubClient) {
-    LOGGER.info("replicateUser: login={}", userResource.getLogin());
+    log.info("replicateUser: login={}", userResource.getLogin());
     String email = resolveEmail(userResource, gitHubClient);
 
     User user = userRepository.findByEmail(email).map(u -> {
@@ -119,7 +116,7 @@ public class GitHubUserReplicator extends AbstractUserReplicator {
   }
 
   private void updateUser(User user, UserResource userResource, GitHubClient gitHubClient) {
-    LOGGER.info("updateUser: login={}", user.getLogin());
+    log.info("updateUser: login={}", user.getLogin());
     user.setFullName(
         isNullOrEmpty(userResource.getName()) ? user.getLogin() : userResource.getName());
     user.setMetadata(defaultMetaData());
@@ -127,7 +124,7 @@ public class GitHubUserReplicator extends AbstractUserReplicator {
   }
 
   private User createUser(UserResource userResource, GitHubClient gitHubClient) {
-    LOGGER.info("createUser: login={}", userResource.getLogin());
+    log.info("createUser: login={}", userResource.getLogin());
     String email = resolveEmail(userResource, gitHubClient);
     User user = new User();
     user.setLogin(email);
@@ -142,7 +139,7 @@ public class GitHubUserReplicator extends AbstractUserReplicator {
   }
 
   private void uploadAvatar(GitHubClient gitHubClient, User user, String avatarUrl) {
-    LOGGER.info("uploadAvatar: login={}", user.getLogin());
+    log.info("uploadAvatar: login={}", user.getLogin());
     if (avatarUrl == null) {
       return;
     }
@@ -157,12 +154,12 @@ public class GitHubUserReplicator extends AbstractUserReplicator {
         uploadPhoto(user, photo);
       }
     } catch (Exception e) {
-      LOGGER.warn("Unable to load avatar for user '{}', skipping: {}", user.getLogin(), e.getMessage(), e);
+      log.warn("Unable to load avatar for user '{}', skipping: {}", user.getLogin(), e.getMessage(), e);
     }
   }
 
   private Optional<String> retrievePrimaryEmail(GitHubClient gitHubClient) {
-    LOGGER.info("retrievePrimaryEmail");
+    log.info("retrievePrimaryEmail");
     return gitHubClient.getUserEmails()
         .stream()
         .filter(EmailResource::isVerified)
@@ -172,14 +169,13 @@ public class GitHubUserReplicator extends AbstractUserReplicator {
   }
 
   private String resolveEmail(UserResource user, GitHubClient client) {
-    LOGGER.info("resolveEmail: login={}", user.getLogin());
+    log.info("resolveEmail: login={}", user.getLogin());
     return Optional.ofNullable(user.getEmail())
         .filter(StringUtils::isNotBlank)
         .map(NORMALIZE_STRING)
         .orElseGet(() -> retrievePrimaryEmail(client)
             .map(NORMALIZE_STRING)
             .filter(StringUtils::isNotBlank)
-            .orElseThrow(
-                () -> new UserSynchronizationException("User 'email' has not been provided")));
+            .orElseThrow(() -> new UserSynchronizationException("User 'email' has not been provided")));
   }
 }

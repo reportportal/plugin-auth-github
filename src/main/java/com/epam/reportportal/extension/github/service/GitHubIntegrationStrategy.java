@@ -24,12 +24,10 @@ import static com.epam.reportportal.extension.github.model.RegistrationParam.CLI
 import static com.epam.reportportal.extension.github.model.RegistrationParam.CLIENT_SECRET;
 import static com.epam.reportportal.extension.github.model.RegistrationParam.JWK_SET_URI;
 import static com.epam.reportportal.extension.github.model.RegistrationParam.REDIRECT_URI_TEMPLATE;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.REDIRECT_URL_TEMPLATE;
 import static com.epam.reportportal.extension.github.model.RegistrationParam.RESTRICTIONS;
 import static com.epam.reportportal.extension.github.model.RegistrationParam.SCOPES;
 import static com.epam.reportportal.extension.github.model.RegistrationParam.TOKEN_URI;
 import static com.epam.reportportal.extension.github.model.RegistrationParam.USER_INFO_ENDPOINT_NAME_ATTR;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.USER_INFO_ENDPOINT_NAME_ATTRIBUTE;
 import static com.epam.reportportal.extension.github.model.RegistrationParam.USER_INFO_ENDPOINT_URI;
 import static java.util.Optional.ofNullable;
 
@@ -37,19 +35,15 @@ import com.epam.reportportal.auth.integration.handler.impl.strategy.AuthIntegrat
 import com.epam.reportportal.auth.integration.validator.duplicate.IntegrationDuplicateValidator;
 import com.epam.reportportal.auth.integration.validator.request.AuthRequestValidator;
 import com.epam.reportportal.auth.model.AbstractAuthResource;
+import com.epam.reportportal.base.core.integration.util.IntegrationParamsEncryptor;
 import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationRepository;
 import com.epam.reportportal.base.infrastructure.persistence.entity.integration.Integration;
 import com.epam.reportportal.base.model.integration.IntegrationRQ;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.jasypt.util.text.BasicTextEncryptor;
 import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.stereotype.Service;
@@ -62,19 +56,19 @@ import org.springframework.stereotype.Service;
 public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
 
   private static final String CALL_BACK_URL = "{baseUrl}/sso/login/{registrationId}";
-  private static final String ORGANIZATION_TYPE = "organization";
   private static final String ORGANIZATIONS_KEY = "organizations";
 
   public GitHubIntegrationStrategy(IntegrationRepository integrationRepository,
       AuthRequestValidator<IntegrationRQ> updateAuthRequestValidator,
       IntegrationDuplicateValidator integrationDuplicateValidator,
-      BasicTextEncryptor encryptor) {
-    super(integrationRepository, updateAuthRequestValidator, integrationDuplicateValidator);
+      IntegrationParamsEncryptor paramsEncryptor) {
+    super(integrationRepository, updateAuthRequestValidator, integrationDuplicateValidator,
+        paramsEncryptor);
   }
 
   @Override
   protected void populateIntegrationDetails(Integration integration, IntegrationRQ integrationRq) {
-    integration.setName(integrationRq.getName());
+    integration.setName(integration.getType().getName());
 
     var params = integrationRq.getIntegrationParams();
 
@@ -108,10 +102,10 @@ public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
         .orElseGet(springRegistration::getClientName));
     integrationParams.put(AUTH_GRANT_TYPE, ofNullable((String) params.get(AUTH_GRANT_TYPE))
         .orElseGet(() -> springRegistration.getAuthorizationGrantType().getValue()));
-    integrationParams.put(REDIRECT_URI_TEMPLATE, ofNullable((String) params.get(REDIRECT_URL_TEMPLATE))
+    integrationParams.put(REDIRECT_URI_TEMPLATE, ofNullable((String) params.get(REDIRECT_URI_TEMPLATE))
         .orElseGet(springRegistration::getRedirectUri));
     integrationParams.put(SCOPES, ofNullable(params.get(SCOPES))
-        .map(s -> new ArrayList<>((java.util.Set<String>) s))
+        .map(s -> (List<String>) s)
         .orElseGet(() -> new ArrayList<>(springRegistration.getScopes())));
 
     ClientRegistration.ProviderDetails details = springRegistration.getProviderDetails();
@@ -122,34 +116,28 @@ public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
     integrationParams.put(USER_INFO_ENDPOINT_URI, ofNullable((String) params.get(USER_INFO_ENDPOINT_URI))
         .orElseGet(() -> details.getUserInfoEndpoint().getUri()));
     integrationParams.put(USER_INFO_ENDPOINT_NAME_ATTR,
-        ofNullable((String) params.get(USER_INFO_ENDPOINT_NAME_ATTRIBUTE))
+        ofNullable((String) params.get(USER_INFO_ENDPOINT_NAME_ATTR))
             .orElseGet(() -> details.getUserInfoEndpoint().getUserNameAttributeName()));
     integrationParams.put(JWK_SET_URI, ofNullable((String) params.get(JWK_SET_URI))
         .orElseGet(details::getJwkSetUri));
 
-    integrationParams.put(RESTRICTIONS, buildRestrictions((Map<String, String>) params.get(RESTRICTIONS)));
+    integrationParams.put(RESTRICTIONS, buildRestrictions((Map<String, Object>) params.get(RESTRICTIONS)));
   }
 
 
-  private static List<Map<String, Object>> buildRestrictions(Map<String, String> restrictions) {
-    String organizations = ofNullable(restrictions)
-        .map(r -> r.get(ORGANIZATIONS_KEY))
-        .orElse("");
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> buildRestrictions(Map<String, Object> restrictions) {
+    List<String> organizations = ofNullable(restrictions)
+        .map(r -> (List<String>) r.get(ORGANIZATIONS_KEY))
+        .orElse(List.of());
 
-    if (StringUtils.isBlank(organizations)) {
-      return Collections.emptyList();
+    Map<String, Object> result = new HashMap<>();
+    if (organizations.isEmpty()) {
+      return result;
     }
 
-    return Arrays.stream(organizations.split(","))
-        .map(String::trim)
-        .filter(StringUtils::isNotBlank)
-        .map(org -> {
-          Map<String, Object> restriction = new HashMap<>();
-          restriction.put("type", ORGANIZATION_TYPE);
-          restriction.put("value", org);
-          return restriction;
-        })
-        .collect(Collectors.toList());
+    result.put(ORGANIZATIONS_KEY, organizations);
+    return result;
   }
 
 }
