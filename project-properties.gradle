@@ -1,6 +1,7 @@
 def commonScriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/'
 
 project.ext {
+    publishRepo = "https://maven.pkg.github.com/reportportal/plugin-auth-github"
     releaseMode = project.hasProperty("releaseMode")
     pluginsDir = layout.buildDirectory.dir('plugins').get().asFile.absolutePath
     scriptsUrl = commonScriptsUrl + (releaseMode ? getProperty('scripts.version') : 'develop')

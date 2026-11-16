@@ -9,6 +9,8 @@ plugins {
 }
 
 apply from: 'project-properties.gradle'
+apply from: "${scriptsUrl}/release-fat.gradle"
+apply from: "${scriptsUrl}/signing.gradle"
 
 dependencyManagement {
     imports {
@@ -143,5 +145,3 @@ spotbugsMain {
         }
     }
 }
-
-javadoc.enabled = false
