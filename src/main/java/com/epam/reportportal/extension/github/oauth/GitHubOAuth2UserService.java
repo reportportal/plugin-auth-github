@@ -16,6 +16,7 @@
 
 package com.epam.reportportal.extension.github.oauth;
 
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.ORGANIZATIONS_KEY;
 import static com.epam.reportportal.extension.github.oauth.GitHubOAuthProvider.PROVIDER_NAME;
 
 import com.epam.reportportal.auth.model.OAuthRegistrationResource;
@@ -73,7 +74,7 @@ public class GitHubOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
   private List<String> parseAllowedOrganizations(OAuthRegistrationResource registration) {
     return Optional.ofNullable(registration.getRestrictions())
-        .map(restrictions -> (List<String>) (Object) restrictions.get("organizations"))
+        .map(restrictions -> (List<String>) (Object) restrictions.get(ORGANIZATIONS_KEY))
         .orElse(Collections.emptyList());
   }
 

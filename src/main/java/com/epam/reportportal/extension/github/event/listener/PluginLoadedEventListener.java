@@ -19,9 +19,6 @@ package com.epam.reportportal.extension.github.event.listener;
 import static com.epam.reportportal.extension.github.GitHubExtension.SCHEMA_SCRIPTS_DIR;
 
 import com.epam.reportportal.base.core.events.domain.PluginUploadedEvent;
-import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationRepository;
-import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationTypeRepository;
-import com.epam.reportportal.extension.github.info.PluginInfoProvider;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -42,18 +39,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public class PluginLoadedEventListener implements ApplicationListener<PluginUploadedEvent> {
 
   private final String pluginId;
-  private final IntegrationTypeRepository integrationTypeRepository;
-  private final IntegrationRepository integrationRepository;
-  private final PluginInfoProvider pluginInfoProvider;
   private final DataSource dataSource;
 
-  public PluginLoadedEventListener(String pluginId,
-      IntegrationTypeRepository integrationTypeRepository,
-      IntegrationRepository integrationRepository, PluginInfoProvider pluginInfoProvider, DataSource dataSource) {
+  public PluginLoadedEventListener(String pluginId, DataSource dataSource) {
     this.pluginId = pluginId;
-    this.integrationTypeRepository = integrationTypeRepository;
-    this.integrationRepository = integrationRepository;
-    this.pluginInfoProvider = pluginInfoProvider;
     this.dataSource = dataSource;
   }
 
