@@ -72,6 +72,14 @@ artifacts {
     archives shadowJar
 }
 
+tasks.named('jar') {
+    enabled = true
+}
+
+publishing.publications.named('shadow') {
+    artifact(tasks.named('jar'))
+}
+
 sourceSets {
     main {
         resources
@@ -81,6 +89,19 @@ sourceSets {
     }
 }
 
+def pluginManifestAttributes = [
+        "Plugin-Class"                         : "${pluginClass}",
+        "Plugin-Id"                            : "${pluginId}",
+        "Plugin-Name"                          : "${pluginName}",
+        "Plugin-Version"                       : "${project.version}",
+        "Plugin-Provider"                      : "${provider}",
+        "Plugin-License"                       : "${license}",
+        "Plugin-Description"                   : "${project.description}",
+        "Plugin-Documentation"                 : "${documentation}",
+        "Plugin-Metadata-isIntegrationsAllowed": "${isIntegrationsAllowed}",
+        "Plugin-Binary-Data-main"              : "${mainBinaryData}",
+]
+
 jar {
     from("src/main/resources") {
         into("/resources")
@@ -88,26 +109,21 @@ jar {
     from("ui/build") {
         into("/resources")
     }
+    manifest {
+        attributes(pluginManifestAttributes)
+    }
     doFirst {
         manifest {
             attributes(
-                    "Class-Path": configurations.compileClasspath.collect { it.getName() }.join(' '),
-                    "Plugin-Class": "${pluginClass}",
-                    "Plugin-Id": "${pluginId}",
-                    "Plugin-Name": "${pluginName}",
-                    "Plugin-Version": "${project.version}",
-                    "Plugin-Provider": "${provider}",
-                    "Plugin-License": "${license}",
-                    "Plugin-Description": "${project.description}",
-                    "Plugin-Documentation": "${documentation}",
-                    "Plugin-Metadata-isIntegrationsAllowed": "${isIntegrationsAllowed}",
-                    "Plugin-Binary-Data-main": "${mainBinaryData}"
+                    "Class-Path": configurations.compileClasspath.collect { it.getName() }.join(' ')
             )
         }
     }
 }
 
 shadowJar {
+    dependsOn jar
+    archiveClassifier.set('all')
     from("src/main/resources") {
         into("/resources")
     }
