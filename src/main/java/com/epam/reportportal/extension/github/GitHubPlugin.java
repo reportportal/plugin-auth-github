@@ -17,11 +17,7 @@
 package com.epam.reportportal.extension.github;
 
 import org.pf4j.Plugin;
-import org.pf4j.PluginWrapper;
 
 public class GitHubPlugin extends Plugin {
 
-  public GitHubPlugin(PluginWrapper wrapper) {
-    super(wrapper);
-  }
 }
