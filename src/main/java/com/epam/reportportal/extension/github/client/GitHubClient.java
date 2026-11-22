@@ -87,7 +87,10 @@ public class GitHubClient {
 
   public List<OrganizationResource> getUserOrganizations(UserResource user) {
     log.debug("getUserOrganizations: login={}", user.getLogin());
-    return get(user.getOrganizationsUrl()).body(new ParameterizedTypeReference<>() {
+    // /user/orgs returns all memberships of the authenticated user, including
+    // private ones. The public /users/{login}/orgs endpoint only lists
+    // publicized memberships.
+    return get(GITHUB_BASE_URL + "/user/orgs").body(new ParameterizedTypeReference<>() {
     });
   }
 

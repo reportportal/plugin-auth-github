@@ -28,6 +28,7 @@ import com.epam.reportportal.extension.github.model.OrganizationResource;
 import com.epam.reportportal.extension.github.model.UserResource;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
@@ -86,7 +87,8 @@ public class GitHubOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
     boolean hasAccess = client.getUserOrganizations(user)
         .stream()
         .map(OrganizationResource::getLogin)
-        .anyMatch(allowedOrgs::contains);
+        .filter(Objects::nonNull)
+        .anyMatch(login -> allowedOrgs.stream().anyMatch(login::equalsIgnoreCase));
 
     if (!hasAccess) {
       throw new OAuth2AuthenticationException(new OAuth2Error("access_denied",
