@@ -74,7 +74,7 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
   public static final String SSO_LOGIN_PATH = "/oauth/login";
   public static final String SCHEMA_SCRIPTS_DIR = "resources/schema";
 
-  private static final String PLUGIN_ID = "github";
+  private static final String PLUGIN_ID = "plugin-auth-github";
   private static final String PLUGIN_NAME = "GitHub Auth";
   private static final String DOCUMENTATION_LINK = "https://reportportal.io/docs/plugins/authorization/GitHubAuthorization";
   private static final String DOCUMENTATION_LINK_FIELD = "documentationLink";
