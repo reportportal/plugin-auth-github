@@ -16,19 +16,20 @@
 
 package com.epam.reportportal.extension.github.service;
 
-import static com.epam.reportportal.extension.github.model.RegistrationParam.AUTHORIZATION_URI;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.AUTH_GRANT_TYPE;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.CLIENT_AUTH_METHOD;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.CLIENT_ID;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.CLIENT_NAME;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.CLIENT_SECRET;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.JWK_SET_URI;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.REDIRECT_URI_TEMPLATE;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.RESTRICTIONS;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.SCOPES;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.TOKEN_URI;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.USER_INFO_ENDPOINT_NAME_ATTR;
-import static com.epam.reportportal.extension.github.model.RegistrationParam.USER_INFO_ENDPOINT_URI;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.AUTHORIZATION_URI;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.AUTH_GRANT_TYPE;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.CLIENT_AUTH_METHOD;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.CLIENT_ID;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.CLIENT_NAME;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.CLIENT_SECRET;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.JWK_SET_URI;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.ORGANIZATIONS_KEY;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.REDIRECT_URI_TEMPLATE;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.RESTRICTIONS;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.SCOPES;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.TOKEN_URI;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.USER_INFO_ENDPOINT_NAME_ATTR;
+import static com.epam.reportportal.auth.integration.converter.RegistrationParam.USER_INFO_ENDPOINT_URI;
 import static java.util.Optional.ofNullable;
 
 import com.epam.reportportal.auth.integration.handler.impl.strategy.AuthIntegrationStrategy;
@@ -46,17 +47,14 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.stereotype.Service;
 
 /**
  * @author <a href="mailto:ihar_kahadouski@epam.com">Ihar Kahadouski</a>
  */
 @Slf4j
-@Service
 public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
 
   private static final String CALL_BACK_URL = "{baseUrl}/sso/login/{registrationId}";
-  private static final String ORGANIZATIONS_KEY = "organizations";
 
   public GitHubIntegrationStrategy(IntegrationRepository integrationRepository,
       AuthRequestValidator<IntegrationRQ> updateAuthRequestValidator,
@@ -123,7 +121,6 @@ public class GitHubIntegrationStrategy extends AuthIntegrationStrategy {
 
     integrationParams.put(RESTRICTIONS, buildRestrictions((Map<String, Object>) params.get(RESTRICTIONS)));
   }
-
 
   @SuppressWarnings("unchecked")
   private static Map<String, Object> buildRestrictions(Map<String, Object> restrictions) {

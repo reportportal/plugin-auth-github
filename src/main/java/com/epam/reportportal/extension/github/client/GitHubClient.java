@@ -19,19 +19,20 @@ package com.epam.reportportal.extension.github.client;
 import com.epam.reportportal.extension.github.model.EmailResource;
 import com.epam.reportportal.extension.github.model.OrganizationResource;
 import com.epam.reportportal.extension.github.model.UserResource;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.authentication.AuthenticationServiceException;
-import org.springframework.web.client.DefaultResponseErrorHandler;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 /**
  * Simple GitHub API client.
@@ -41,29 +42,25 @@ public class GitHubClient {
 
   private static final String GITHUB_BASE_URL = "https://api.github.com";
 
-  private final RestTemplate restTemplate;
+  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+  private static final Duration READ_TIMEOUT = Duration.ofSeconds(30);
 
-  private static final int CONNECT_TIMEOUT_MS = 5_000;
-  private static final int READ_TIMEOUT_MS = 30_000;
+  private final RestClient restClient;
 
   private GitHubClient(String accessToken) {
     SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-    requestFactory.setConnectTimeout(CONNECT_TIMEOUT_MS);
-    requestFactory.setReadTimeout(READ_TIMEOUT_MS);
-    this.restTemplate = new RestTemplate(requestFactory);
-    this.restTemplate.setErrorHandler(new DefaultResponseErrorHandler() {
-      @Override
-      public void handleError(ClientHttpResponse response) {
-        String errorMessage =
-            "Unable to load GitHub data: " + new String(getResponseBody(response), StandardCharsets.UTF_8);
-        log.error(errorMessage);
-        throw new AuthenticationServiceException(errorMessage);
-      }
-    });
-    this.restTemplate.getInterceptors().add((request, body, execution) -> {
-      request.getHeaders().add("Authorization", "bearer " + accessToken);
-      return execution.execute(request, body);
-    });
+    requestFactory.setConnectTimeout(CONNECT_TIMEOUT);
+    requestFactory.setReadTimeout(READ_TIMEOUT);
+    this.restClient = RestClient.builder()
+        .requestFactory(requestFactory)
+        .defaultHeader(HttpHeaders.AUTHORIZATION, "bearer " + accessToken)
+        .defaultStatusHandler(HttpStatusCode::isError, (request, response) -> {
+          String errorMessage =
+              "Unable to load GitHub data: " + new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+          log.error(errorMessage);
+          throw new AuthenticationServiceException(errorMessage);
+        })
+        .build();
   }
 
   public static GitHubClient withAccessToken(String accessToken) {
@@ -73,34 +70,34 @@ public class GitHubClient {
 
   public UserResource getUser() {
     log.debug("getUser");
-    return this.restTemplate.getForObject(GITHUB_BASE_URL + "/user", UserResource.class);
+    return get(GITHUB_BASE_URL + "/user").body(UserResource.class);
   }
 
   public Map<String, Object> getUserAttributes() {
     log.debug("getUserAttributes");
-    return getForObject(GITHUB_BASE_URL + "/user", new ParameterizedTypeReference<>() {
+    return get(GITHUB_BASE_URL + "/user").body(new ParameterizedTypeReference<>() {
     });
   }
 
   public List<EmailResource> getUserEmails() {
     log.debug("getUserEmails");
-    return getForObject(GITHUB_BASE_URL + "/user/emails", new ParameterizedTypeReference<>() {
+    return get(GITHUB_BASE_URL + "/user/emails").body(new ParameterizedTypeReference<>() {
     });
   }
 
   public List<OrganizationResource> getUserOrganizations(UserResource user) {
     log.debug("getUserOrganizations: login={}", user.getLogin());
-    return getForObject(user.getOrganizationsUrl(), new ParameterizedTypeReference<>() {
+    return get(user.getOrganizationsUrl()).body(new ParameterizedTypeReference<>() {
     });
   }
 
   public ResponseEntity<Resource> downloadResource(String url) {
     log.debug("downloadResource: url={}", url);
-    return this.restTemplate.getForEntity(url, Resource.class);
+    return get(url).toEntity(Resource.class);
   }
 
-  private <T> T getForObject(String url, ParameterizedTypeReference<T> type, Object... urlVars) {
-    log.debug("getForObject: url={}", url);
-    return this.restTemplate.exchange(url, HttpMethod.GET, null, type, urlVars).getBody();
+  private RestClient.ResponseSpec get(String url) {
+    log.debug("get: url={}", url);
+    return this.restClient.get().uri(URI.create(url)).retrieve();
   }
 }

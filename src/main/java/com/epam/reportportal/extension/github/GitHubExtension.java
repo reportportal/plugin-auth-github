@@ -24,10 +24,10 @@ import com.epam.reportportal.auth.integration.handler.impl.strategy.AuthIntegrat
 import com.epam.reportportal.auth.integration.validator.duplicate.IntegrationDuplicateValidator;
 import com.epam.reportportal.auth.integration.validator.request.UpdateAuthRequestValidator;
 import com.epam.reportportal.auth.oauth.OAuthProvider;
+import com.epam.reportportal.base.core.integration.util.IntegrationParamsEncryptor;
 import com.epam.reportportal.base.infrastructure.commons.ContentTypeResolver;
 import com.epam.reportportal.base.infrastructure.persistence.binary.UserBinaryDataService;
 import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationRepository;
-import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationTypeRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectUserRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.UserRepository;
@@ -43,18 +43,16 @@ import com.epam.reportportal.extension.github.command.SynchronizeGithubUserComma
 import com.epam.reportportal.extension.github.event.listener.PluginLoadedEventListener;
 import com.epam.reportportal.extension.github.oauth.GitHubOAuthProvider;
 import com.epam.reportportal.extension.github.service.GitHubIntegrationStrategy;
-import com.epam.reportportal.extension.github.service.GitHubRequiredParamNamesProvider;
-import com.epam.reportportal.extension.github.utils.MemoizingSupplier;
+import com.epam.reportportal.extension.util.MemoizingSupplier;
 import jakarta.annotation.PostConstruct;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
-import com.epam.reportportal.base.core.integration.util.IntegrationParamsEncryptor;
 import org.pf4j.Extension;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -96,9 +94,6 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
   private ApplicationContext applicationContext;
 
   @Autowired
-  private IntegrationTypeRepository integrationTypeRepository;
-
-  @Autowired
   private UserRepository userRepository;
 
   @Autowired
@@ -133,7 +128,6 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
   @Autowired
   private DataSource dataSource;
 
-  private GitHubUserReplicator replicator;
   private GitHubOAuthProvider oauthProvider;
   private Map<String, ExtensionCommand<?>> commonCommands;
 
@@ -142,18 +136,16 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
 
 
   @PostConstruct
-  public void init() throws IOException {
+  public void init() {
     log.info("Initializing GitHub OAuth extension");
     this.gitHubIntegrationStrategySupplier = new MemoizingSupplier<>(
         () -> new GitHubIntegrationStrategy(integrationRepository,
-            new UpdateAuthRequestValidator(new GitHubRequiredParamNamesProvider()), integrationDuplicateValidator,
-            paramsEncryptor));
+            new UpdateAuthRequestValidator(List::of), integrationDuplicateValidator, paramsEncryptor));
 
     this.pluginLoadedListenerSupplier = new MemoizingSupplier<>(
-        () -> new PluginLoadedEventListener(PLUGIN_ID, integrationTypeRepository, integrationRepository,
-            integrationType -> integrationType, dataSource));
+        () -> new PluginLoadedEventListener(PLUGIN_ID, dataSource));
 
-    replicator = new GitHubUserReplicator(
+    GitHubUserReplicator replicator = new GitHubUserReplicator(
         userRepository, userBinaryDataService, contentTypeResolver, userEventPublisher
     );
     oauthProvider = new GitHubOAuthProvider(replicator);
@@ -218,6 +210,8 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
     return params;
   }
 
+  // TODO remove once service-api drops the legacy command methods from ReportPortalExtensionPoint
+  @Deprecated
   @Override
   public CommonPluginCommand<?> getCommonCommand(String commandName) {
     return null;
@@ -228,6 +222,8 @@ public class GitHubExtension implements AuthExtension, DisposableBean {
     return commonCommands;
   }
 
+  // TODO remove once service-api drops the legacy command methods from ReportPortalExtensionPoint
+  @Deprecated
   @Override
   public PluginCommand<?> getIntegrationCommand(String commandName) {
     return null;
